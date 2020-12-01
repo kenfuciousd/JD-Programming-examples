@@ -1,0 +1,3 @@
+              {'name' : 'Sam','address':'Ranchi','Dept':'HR'},
+              {'name': 'Sarah', 'address': 'Ranchi', 'Dept': 'MGR'},
+              {'name': 'Arsh', 'address': 'Delhi', 'Dept': 'HR'}
