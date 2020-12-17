@@ -1,0 +1,28 @@
+Engineer Notes
+
+checklist:
+- An rpm SPEC file for each application
+- A Makefile automating the build process
+- A Virtual Machine template for testing the built packages
+- Documentation on how you would:
+  * Deliver the final packages to a client
+  * Document a strategy for building update packages (e.g., how would you specify code versions, especially across repos)
+  * What tools or methods you would lean on for remote support of these applications once installed
+
+  Running the apps locally:
+  ```
+  pip install -r requirements.txt
+  sqlite3 database.db < schema.sql
+  python app_a.py
+  python app_b.py
+  ```
+
+  Making a request
+  ```
+  curl -X POST -H 'Authorization: mytoken' http://127.0.0.1:5000/jobs
+  ```
+
+  ----
+
+  permissions list?  also needing sqllite, make sure the packages are downloaded via requirements.
+  
