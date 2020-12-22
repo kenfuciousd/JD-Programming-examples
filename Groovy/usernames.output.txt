@@ -1,0 +1,5 @@
+
+Format A, usernames: [JSchmidt0, BJean1, ERIGBY2, SShady3, ERigby4]
+Format B: [JohnJingleheimerSchmidt0, BillieJean1, ELEANORRIGBY2, SlimMarshalShady3, EleanorRigby4]
+Format C: [JSchmidt0, BJean1, ERIGBY2, MShady3, ERigby4]
+Format D: [Schmidt, John, Jacob, Jingleheimer, 0, Jean, Billie, 1, RIGBY, ELEANOR, 2, Shady, Slim, Marshal, 3, Rigby, Eleanor, 4]

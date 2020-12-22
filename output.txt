@@ -1,0 +1,25 @@
+Creating 3 Files
+we are adding puppy.txt
+Viewing contents of puppy.txt :
+Lassie
+George
+Maggie
+we are adding monkey.txt
+Viewing contents of monkey.txt :
+Lassie
+George
+Maggie
+we are adding baby.txt
+Viewing contents of baby.txt :
+Lassie
+George
+Maggie
+total 56
+14374814  0 drwxr-xr-x   8 GoldGoose  staff   272 Dec 21 09:54 .
+14362616  0 drwxr-xr-x  12 GoldGoose  staff   408 Dec 21 09:52 ..
+14374850 16 -rw-r--r--@  1 GoldGoose  staff  6148 Dec 20 17:53 .DS_Store
+14407298  8 -rw-r--r--   1 GoldGoose  staff    21 Dec 21 09:54 baby.txt
+14374930  8 -rwxr-xr-x@  1 GoldGoose  staff   594 Dec 21 09:54 createbashfiles.sh
+14407297  8 -rw-r--r--   1 GoldGoose  staff    21 Dec 21 09:54 monkey.txt
+14407295  8 -rw-r--r--   1 GoldGoose  staff   248 Dec 21 09:54 output.txt
+14407296  8 -rw-r--r--   1 GoldGoose  staff    21 Dec 21 09:54 puppy.txt
