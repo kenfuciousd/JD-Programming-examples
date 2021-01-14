@@ -1,0 +1,36 @@
+
+    Directory: /Users/GoldGoose/Documents/GitHub/Exclamation_Labs/Powershell
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-----          12/21/2020 12:11 PM              0 puppy.txt
+-----          12/21/2020 12:11 PM              0 monkey.txt
+-----          12/21/2020 12:11 PM              0 baby.txt
+Retrieving the content of puppy.txt
+Lassie
+George
+Maggie
+Retrieving the content of monkey.txt
+Lassie
+George
+Maggie
+Retrieving the content of baby.txt
+Lassie
+George
+Maggie
+
+puppy.txt found, no additional creation necessary
+monkey.txt found, no additional creation necessary
+baby.txt found, no additional creation necessary
+Retrieving the content of puppy.txt
+Lassie
+George
+Maggie
+Retrieving the content of monkey.txt
+Lassie
+George
+Maggie
+Retrieving the content of baby.txt
+Lassie
+George
+Maggie

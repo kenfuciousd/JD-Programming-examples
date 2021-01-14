@@ -1,0 +1,40 @@
+Creating the test database
+
+
+
+Exercise 1:
+
+[id:1, firstname:John, middlename:Jacob, lastname:Schmidt, nickname:Jingleheimer]
+[id:2, firstname:Billie, middlename:[null], lastname:Jean, nickname:[null]]
+[id:3, firstname:ELEANOR, middlename:[null], lastname:RIGBY, nickname:[null]]
+[id:4, firstname:Slim, middlename:[null], lastname:Shady, nickname:Marshal]
+[id:5, firstname:Eleanor, middlename:[null], lastname:Rigby, nickname:[null]]
+
+
+Exercise 2:
+
+[id:1, firstname:John, middlename:Jacob, lastname:Schmidt, nickname:Jingleheimer]
+[id:2, firstname:Billie, middlename:[null], lastname:Jean, nickname:[null]]
+[id:3, firstname:ELEANOR, middlename:[null], lastname:RIGBY, nickname:[null]]
+[id:4, firstname:Slim, middlename:[null], lastname:Shady, nickname:Marshal]
+[id:5, firstname:Eleanor, middlename:[null], lastname:Rigby, nickname:[null]]
+[id:6, firstname:Jason, middlename:[null], lastname:Dyer, nickname:[null]]
+
+
+Exercise 3:
+
+[id:1, firstname:John, middlename:Jacob, lastname:Schmidt, nickname:Jingleheimer]
+[id:2, firstname:Billie, middlename:[null], lastname:Jean, nickname:[null]]
+[id:3, firstname:ELEANOR, middlename:[null], lastname:RIGBY, nickname:[null]]
+[id:4, firstname:Slim, middlename:[null], lastname:Shady, nickname:[null]]
+[id:5, firstname:Eleanor, middlename:[null], lastname:Rigby, nickname:[null]]
+[id:6, firstname:Jason, middlename:[null], lastname:Dyer, nickname:[null]]
+
+
+Exercise 4:
+
+[id:1, firstname:John, middlename:Jacob, lastname:Schmidt, nickname:Jingleheimer]
+[id:2, firstname:Billie, middlename:[null], lastname:Jean, nickname:[null]]
+[id:4, firstname:Slim, middlename:[null], lastname:Shady, nickname:[null]]
+[id:5, firstname:Eleanor, middlename:[null], lastname:Rigby, nickname:[null]]
+[id:6, firstname:Jason, middlename:[null], lastname:Dyer, nickname:[null]]
