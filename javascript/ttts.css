@@ -1,0 +1,98 @@
+
+   
+body {
+    font-family: Times, Times New Roman, serif;
+    padding: 50px 0px 50px 0px;
+    margin:  50px;
+}
+
+input[type=text] {
+    width: 10%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    box-sizing: border-box;
+    border: none;
+    border-bottom: 2px solid black;
+    text-align:center;
+    font-size: 150%;
+    color: red;
+    outline: none;
+}
+
+.slotMachine {
+    background-color: lightgray;
+    border: dashed black 3px;
+    height: 400px;
+    width: 400px;
+    margin: 50px;
+    z-index: 5;
+    display: flex;
+    table-layout: fixed;
+}
+
+.slotReels{
+    height: 30%;
+    width: 30%;
+    margin: 10px;
+    border-left: 1px;
+    border-right: 1px;
+    padding-left: 30px;
+    padding-right: 30px;
+    table-layout: auto;
+}
+
+.slotCell{
+    border-left: 2px solid #999;
+    border-right: 2px solid #999;
+    padding-left: 50px;  
+    padding-right: 50px;
+}
+.slotCellMiddle{
+    border-left: 2px solid #999;
+    border-right: 2px solid #999;    
+    border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
+    padding-left: 50px;  
+    padding-right: 50px;   
+}
+
+@keyframes flickerAnimation 
+{
+    0%   { opacity:1; }
+    50%  { opacity:0; }
+    100% { opacity:1; }
+}
+.blur
+{
+    -webkit-animation: flickerAnimation .5s infinite;
+    -moz-animation: flickerAnimation .5s infinite;
+    -o-animation: flickerAnimation .5s infinite;
+    animation: flickerAnimation .05s infinite;
+    filter: blur(4px);
+    -webkit-filter: blur(4px);
+}
+
+.top
+{
+    animation: top .12s cubic-bezier(.36,.07,.19,.97) infinite;
+    transform: translate3d(0, 0, 0);
+    position: relative;
+}
+
+@keyframes top {
+    10%, 90% {
+    transform: translate3d(0, 0px, 0);
+    }
+
+    20%, 80% {
+    transform: translate3d(0, -50px, 0);
+    }
+
+    30%, 50%, 70% {
+    transform: translate3d(0, 50px, 0);
+    }
+
+    40%, 60% {
+    transform: translate3d(0, 0px, 0);
+    }
+}
