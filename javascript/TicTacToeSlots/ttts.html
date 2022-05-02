@@ -12,10 +12,10 @@
 <body>
 	<h1 class="center">Tic Tac Toe Slots</h1>
     <form>
-        <label for="fname">How many dollars are inserted?</label>
-        <input type="number" id="money" >
-        <button type="button" class="moneyButton" onclick="saveCash()">Save Cash</button>
-        <button onclick="cashout()">Cash Out</button>
+        <label for="fname" name="cashInput">How many dollars are inserted?</label>
+        <input type="number" name="cashInput" id="money" >
+        <button type="button" name="cashInput" class="moneyButton" onclick="saveCash()">Save Cash</button>
+        <button onclick="cashout()">Cash Out / Game Reset</button>
     </form>
     <form>
     	<button type="button" onclick="makeItRain()">Test Jackpot</button>
@@ -35,19 +35,19 @@
     <div class="slotMachine">
         <table class="reelBox">
             <tr class="slotReels" id="row1">
-                <td class="slotCell"><p id="reel1pos1" class="red" alt="">X</td>
-                <td class="slotCell"><p id="reel2pos1" class="nocolor" alt=""></td>
-                <td class="slotCell"><p id="reel3pos1" class="red" alt="">X</td>
+                <td class="slotCell"><p id="reel1pos1" name="reel1" class="red" alt="">X</td>
+                <td class="slotCell"><p id="reel2pos1" name="reel2" class="nocolor" alt=""></td>
+                <td class="slotCell"><p id="reel3pos1" name="reel3" class="red" alt="">X</td>
             </tr>
             <tr class="slotReels" id="row2">
-                <td class="slotCellMiddle"><p id="reel1pos2" class="nocolor" alt=""></td>
-                <td class="slotCellMiddle"><p id="reel2pos2" class="red" alt="">X</td>
-                <td class="slotCellMiddle"><p id="reel3pos2" class="nocolor" alt=""></td>
+                <td class="slotCellMiddle"><p id="reel1pos2" name="reel1" class="nocolor" alt=""></td>
+                <td class="slotCellMiddle"><p id="reel2pos2" name="reel2" class="red" alt="">X</td>
+                <td class="slotCellMiddle"><p id="reel3pos2" name="reel3" class="nocolor" alt=""></td>
             </tr>
             <tr class="slotReels" id="row3">
-                <td class="slotCell"><p id="reel1pos3" class="green" alt="">O</td>
-                <td class="slotCell"><p id="reel2pos3" class="nocolor" alt=""></td>
-                <td class="slotCell"><p id="reel3pos3" class="green" alt="">O</td>
+                <td class="slotCell"><p id="reel1pos3" name="reel1" class="green" alt="">O</td>
+                <td class="slotCell"><p id="reel2pos3" name="reel2" class="nocolor" alt=""></td>
+                <td class="slotCell"><p id="reel3pos3" name="reel3" class="green" alt="">O</td>
             </tr>
         </table>
 

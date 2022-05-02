@@ -14,6 +14,7 @@ var reel3 = ['X', '&nbsp&nbsp', 'O', '&nbsp&nbsp', 'O'];
 var reel1pos = 1;
 var reel2pos = 1;
 var reel3pos = 1;
+var reelDelay = 2000; // 2 second delay in resolving reel blur / presenting reel
 
 // global as the player's money - this should be made more secure if this were an actual gambling machine
 var playerMoney = 0;
@@ -23,7 +24,7 @@ var bet = -2;
 // this would need to be rewritten for multi-line bets. 
 var winLine = [];
 
-var blinker; // blinking timer variable to start/stop
+var blinker; // blinking timer variable to start/stop-- TODO: blinking the cells is still broken
 
 // the main gaming function - the initial setup is in the html, nothing needed for constructors. 
 // later, this would be where you pass in the different bet levels 
@@ -55,22 +56,48 @@ function pullLever(){
 	winLine = [];
 }
 
+// sets the reel values. theoretically could be done by a start-spin-then-timer kinda thing
+// also where we are going to spin the reels using the animation
 function spinReels(){
 	reel1pos = getRandomNumber();
 	reel2pos = getRandomNumber();
 	reel3pos = getRandomNumber();
 	//console.log(`Reel positions: ${reel1pos} ${reel2pos} ${reel3pos}`);		
+//	blurReels("reel1");
+//	blurReels("reel2");
+//	blurReels("reel3");
 }
+
+function blurReels(reel){
+	$(reel).addClass('blur');
+    $(reel).addClass('top');
+}
+function stopBlur(reel){
+	$(reel).removeClass('blur');
+    $(reel).removeClass('top');	
+}
+
 function setReels(){
-	// now set reels -- this should always be how they are set, so make it a function?
+	// now set reels - this will include stopping the animation after a short interval for each reel
 	// rather than dynamically build variables, I'm just passing the info direct for now
+	
 	// reel1
-	setReel(1, reel1pos, reel1);
+//	setTimeout(() => {
+//		stopBlur('reel1');
+		setReel(1, reel1pos, reel1);
+//	}, reelDelay);
 	// reel2
-	setReel(2, reel2pos, reel2);
+//	setTimeout(() => {
+//		stopBlur('reel2');	
+		setReel(2, reel2pos, reel2);
+//	}, reelDelay * 2);
 	//reel3
-	setReel(3, reel3pos, reel3);		
+//	setTimeout(() => {
+//		stopBlur('reel3');
+		setReel(3, reel3pos, reel3);		
+//	}, reelDelay * 3);
 }
+
 
 // small array size, so passing the reel so that I don't have to dynamically build variable names
 // also designed this way because it's an array of characters being passed. 
@@ -113,12 +140,18 @@ function setReel(reelNum, reelPos, reelArray){
 }
 
 function saveCash(){
-	playerMoney = Number($('input[id=money]').val());
-	//console.log(`playerMoney is ${playerMoney}`);
-	//	$("input[id=currencyNum]").html(playerMoney);	
-	$("#currencyNum").html(playerMoney);
+	pm = Number($('input[id=money]').val());
+	if(isEnoughMoney(pm)){
+		playerMoney = pm;
+		//console.log(`playerMoney is ${playerMoney}`);
+		//	$("input[id=currencyNum]").html(playerMoney);	
+		$("#currencyNum").html(playerMoney);
+		// hide the Cash Bar - TODO: not hiding. 
+		$('#cashInput').hide();
+	}
 }
 
+// in a production environment, this handling would need to be more secured/obscured imho
 function cashHandler(value){
 	//console.log(`was ${playerMoney} and seeing cash adjustment ${value}`) ;
 	playerMoney += value;
@@ -126,9 +159,11 @@ function cashHandler(value){
 }
 
 // quick and dirty win determination; could also use reel positions 
+// -- noting: if this were multiline or any other betting scheme (like winning based on TTT rules), 
+// -- -- this would need to be rebuilt. 
 function determineWinner(){
 	if(winLine[0] == 'X' && winLine[1] == 'X' && winLine[2] == 'X'){
-		//console.log("Winner Winner Chicken Dinner XXX");
+		//console.log("Winner Winner Chicken Dinner X X X");
 		playerMoney += 100;
 		$("#currencyNum").html(playerMoney);
 		$('#playerMessage').html(' -- JACKPOT!!  +100');
@@ -137,7 +172,7 @@ function determineWinner(){
 		blinker = setInterval(blinkWinMoney(), 1000);		
 	}
 	if(winLine[0] == 'O' && winLine[1] == 'O' && winLine[2] == 'O'){
-		//console.log("Winner with the OOO");
+		//console.log("Winner with the O O O");
 		playerMoney += 50;
 		$("#currencyNum").html(playerMoney);
 		$('#playerMessage').html(' -- You Win!  +50');
@@ -146,9 +181,13 @@ function determineWinner(){
 	}
 }
 
-// totally basic, wouldn't pass Gaming Standards reel logic
+// totally basic, wouldn't pass Gaming Standards reel logic but works for a basic example
+// this is where the RNG call would be, for server deterministic ..
+// -- to make this not pseudo-random and certifiabe in a real betting system,
+// -- -- there would need to be a much better RNG source, amongst the math rework
 function getRandomNumber(){ return Math.floor(Math.random() * 5); }
 
+// colors the characters according to their value, called for each reel cell
 function colorCell(value, reelCell){
 	// clear the cell, then change. 
 	$(reelCell).removeClass();
@@ -160,9 +199,15 @@ function colorCell(value, reelCell){
 
 function cashout(){
 	// this is where you'd print the ticket or otherwise save the winnings
-	// currently just resets the form in default, when pressed; which is not the usual function but works for this
+	// currently just resets the form in default, when pressed; 
+	// which is not how the button really should be used in this instance, but works for this example
+
+	// if this were functioning, and not resetting the whole page, this would be needed to return the cashInput box
+	$('#cashInput').show();
 }
 
+// a silly function with an arbitrary win condition: $5000. 
+// if this were a serious game, this wouldn't exist; but I wanted a ceiling for the example, and to make QA easy
 function isWon(amount) {
     if (amount > 5000) {
         alert('You win Tic Tac Toe Slots! So Lucky!');
@@ -171,6 +216,7 @@ function isWon(amount) {
     return true;
 }
 
+// it blinks the cell. but...
 function blinkWinMoney() {
     var formInput = document.getElementById('row2');
     $(formInput).fadeOut(500);
@@ -202,6 +248,7 @@ function testWinning(){
 	winLine = [];
 }
 
+// function to check if there is imaginary money in the machine. 
 function isEnoughMoney(amount) {
     // if (!Number.isInteger(amount) || amount < 1 || amount > 5000) {
     if (isNaN(amount) || amount < 1 || amount > 5000) {
@@ -215,7 +262,7 @@ function isEnoughMoney(amount) {
 //////////////////// other ideas, currently unused ///////////////////////
 
 
-////snippets from elsewhere, for reference
+////snippets from elsewhere and git, for reference
 // initial function. Waits until animation is finished to start calculate payouts.
 function startSlotMachine() {
     result = document.getElementById('money').value;

@@ -85,6 +85,8 @@ p.nocolor{
     padding-right: 50px;   
 }
 
+
+
 .blink_me {
   animation: blinker 2s linear infinite;
 }
