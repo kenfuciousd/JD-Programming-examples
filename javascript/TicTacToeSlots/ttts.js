@@ -18,6 +18,7 @@ var reelDelay = 2000; // 2 second delay in resolving reel blur / presenting reel
 
 // global as the player's money - this should be made more secure if this were an actual gambling machine
 var playerMoney = 0;
+//making up a random bet #, it seems to hover around the value of the cash, entered, above 200. 
 var bet = -2;
 
 // instance a global winLine array; important for the logic: a push/pop array for testing win conditions. 
@@ -63,9 +64,9 @@ function spinReels(){
 	reel2pos = getRandomNumber();
 	reel3pos = getRandomNumber();
 	//console.log(`Reel positions: ${reel1pos} ${reel2pos} ${reel3pos}`);		
-//	blurReels("reel1");
-//	blurReels("reel2");
-//	blurReels("reel3");
+	blurReels("reel1");
+	blurReels("reel2");
+	blurReels("reel3");
 }
 
 function blurReels(reel){
@@ -82,21 +83,21 @@ function setReels(){
 	// rather than dynamically build variables, I'm just passing the info direct for now
 	
 	// reel1
-//	setTimeout(() => {
-//		stopBlur('reel1');
-		setReel(1, reel1pos, reel1);
-//	}, reelDelay);
-	// reel2
-//	setTimeout(() => {
-//		stopBlur('reel2');	
-		setReel(2, reel2pos, reel2);
-//	}, reelDelay * 2);
-	//reel3
-//	setTimeout(() => {
-//		stopBlur('reel3');
-		setReel(3, reel3pos, reel3);		
-//	}, reelDelay * 3);
-}
+	//	setTimeout(() => {
+			stopBlur('reel1');
+			setReel(1, reel1pos, reel1);
+	//	}, reelDelay);
+		// reel2
+	//	setTimeout(() => {
+			stopBlur('reel2');	
+			setReel(2, reel2pos, reel2);
+	//	}, reelDelay * 2);
+		//reel3
+	//	setTimeout(() => {
+			stopBlur('reel3');
+			setReel(3, reel3pos, reel3);		
+	//	}, reelDelay * 3);
+	}
 
 
 // small array size, so passing the reel so that I don't have to dynamically build variable names
@@ -216,7 +217,7 @@ function isWon(amount) {
     return true;
 }
 
-// it blinks the cell. but...
+// it blinks the winning row. but right now, only once
 function blinkWinMoney() {
     var formInput = document.getElementById('row2');
     $(formInput).fadeOut(500);
@@ -259,7 +260,9 @@ function isEnoughMoney(amount) {
 }
 
 
-//////////////////// other ideas, currently unused ///////////////////////
+
+
+//////////////////// other ideas and scratchpad area, currently unused ///////////////////////
 
 
 ////snippets from elsewhere and git, for reference

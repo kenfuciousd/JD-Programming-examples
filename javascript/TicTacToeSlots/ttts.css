@@ -22,6 +22,7 @@ button.spin {
     border-width: 2px;
     margin-left: 130px;
     width: 200px;
+    border-radius: 5px;    
 }
 
 p.green{ 
@@ -76,7 +77,7 @@ p.nocolor{
     padding-right: 50px;
 }
 .slotCellMiddle{
-    background-color: gainsboro;    
+    background-color: whitesmoke;    
     border-left: 2px solid #999;
     border-right: 2px solid #999;    
     border-top: 4px solid #000;
