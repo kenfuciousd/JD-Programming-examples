@@ -2,7 +2,6 @@
    
 body {
     font-family: Times, Times New Roman, serif;
-    padding: 50px 0px 50px 0px;
     margin:  50px;
 }
 
@@ -19,15 +18,44 @@ input[type=text] {
     outline: none;
 }
 
+button.spin {
+    border-width: 2px;
+    margin-left: 130px;
+    width: 200px;
+}
+
+p.green{ 
+    color: green; 
+} 
+p.red{
+    color: red;
+}
+p.nocolor{
+    color: black;
+}
+
+.currencyDisplay{
+    text-align:  center;
+    font-size: 40px;
+
+}
+
 .slotMachine {
     background-color: lightgray;
-    border: dashed black 3px;
-    height: 400px;
-    width: 400px;
-    margin: 50px;
+    border: solid black 3px;
+    height: 440px;
+    width: 415px;
+    margin-left: 20px;
+    margin-right: 20px;
+    margin-bottom: 20px;
     z-index: 5;
     display: flex;
-    table-layout: fixed;
+    table-layout: auto;
+}
+
+.reelBox{
+    margin: 10px;
+    border: 1px solid #111;
 }
 
 .slotReels{
@@ -48,12 +76,25 @@ input[type=text] {
     padding-right: 50px;
 }
 .slotCellMiddle{
+    background-color: gainsboro;    
     border-left: 2px solid #999;
     border-right: 2px solid #999;    
-    border-top: 2px solid #000;
-    border-bottom: 2px solid #000;
+    border-top: 4px solid #000;
+    border-bottom: 4px solid #000;
     padding-left: 50px;  
     padding-right: 50px;   
+}
+
+.blink_me {
+  animation: blinker 2s linear infinite;
+}
+
+@keyframes blinker {
+  50% {
+    opacity: 0;
+    background: red;
+    color: black;
+  }
 }
 
 @keyframes flickerAnimation 
