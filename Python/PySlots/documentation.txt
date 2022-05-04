@@ -1,0 +1,32 @@
+
+
+Requirements
+
+
+I want to make a slot machine prototype, with the following features: 
+	standard slot machine basics: 
+		process: insert money, choose bets, spin button/lever, see presentation of win/loss, and get notified/rewarded if there is a win. 
+	Jackpot win and behavior (flashing reel contents)
+	I want to be able to receive, bet, win, and cash out credits without fail
+	The reels should be determined "at random" (bonus: do better than the random number generator in python; )
+
+	Customization:
+	I want it built in a way to be able to swap out the presentation: imaging/reels/sounds
+	I want to be able to define winnig patterns: multilines, 
+
+
+
+
+
+
+
+	long range goals:
+	betting crypto?
+	->	a good enough algorithm to be certified? 
+
+
+	references: 
+		RNG:
+			https://realpython.com/python-random/#:~:text=Probably%20the%20most%20widely%20known,algorithm%20as%20its%20core%20generator.
+			> "use os.urandom()"  -- https://stackoverflow.com/questions/22891583/can-i-generate-authentic-random-number-with-python 
+		
