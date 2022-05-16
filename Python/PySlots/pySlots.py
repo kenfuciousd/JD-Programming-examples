@@ -30,6 +30,18 @@ class Slots:
 			# updates the full display, most recently drawn screen
 			pygame.display.flip()
 
+class Reel:
+	""" each reel should handle itself, as it's a logical unit of division within the Slot Machine """
+	def __init__(self):
+		# build the reel: first iteration it'll need a symbol upon instantiation
+		# initialize symbols - pull from a separate reel input.
+		# It should know it's symbol, and the paytable percentage 
+
+	def spin:
+		#return a new symbol, calling the randomizer
+
+
+
 if __name__ == '__main__':
 	#create an instance of, and run the game
 	my_slots = Slots()

@@ -5,28 +5,58 @@ Requirements
 
 I want to make a slot machine prototype, with the following features: 
 	standard slot machine basics: 
-		process: insert money, choose bets, spin button/lever, see presentation of win/loss, and get notified/rewarded if there is a win. 
-	Jackpot win and behavior (flashing reel contents)
+		process: insert money, choose bets (1-3), spin button/lever, see presentation of win/loss, and get notified/rewarded if there is a win, cash out when ready. 
+	I want behavior on a Jackpot win (flashing reel contents)
 	I want to be able to receive, bet, win, and cash out credits without fail
-	The reels should be determined "at random" (bonus: do better than the random number generator in python; )
+		optionally for later: a user system to keep track of credits in a secure way
+	The reels should be determined "at random" (bonus: do better than the random number generator in python, which ain't half bad)
 
-	Customization:
+	Customizations:
 	I want it built in a way to be able to swap out the presentation: imaging/reels/sounds
-	I want to be able to define winnig patterns: multilines, 
-
-
-
-
-
-
+	I want to be able to define winnig patterns: multilines, paytable
 
 	long range goals:
 	betting crypto?
 	->	a good enough algorithm to be certified? 
+	Player info, secured and usable (login, logout, transfer credits in, transfer credits out)
 
+
+Specifications:
+
+	Reel 
+		composed of: 
+			Lucky7_rainbow(1/500), 
+			Lucky7 (7/500), 
+			bar3(16/500), 
+			bar2 (25/500), 
+			bar1(30/500), 
+			heart_rainbow(40/500), heart(40/500), clover(40/500), 
+			bell (50/500), horseshoe (50/500),  
+			cherries(67/500), lemon(67/500), melon(67/500)
+
+		>> each value should be successively add up to 100% chance, corresponding to the paytable in frequency..
+		- the current percentages are a reasonable approximation of good chances, coorelating to the following paytable:
+
+	Rough Paytable outline for Generic Slot Title, per credit bet:
+		Paytable			x1		x3 (only pays more for JP, otherwise just bet value)
+		3 Rainbow 7s: 		500		10,000
+		3 Red 7s:			100		300
+		3 Bar3:				30  	90
+		1 any 7:			25 		75
+		3 bar2: 			20 		40
+		3 bar1: 			10 		30
+		2 any bar: 			5 		15
+		3x heart, clover: 	4 		12
+		3x of any metal		3 		9
+		1 any bar,3x fruit:	2 		6
 
 	references: 
 		RNG:
 			https://realpython.com/python-random/#:~:text=Probably%20the%20most%20widely%20known,algorithm%20as%20its%20core%20generator.
 			> "use os.urandom()"  -- https://stackoverflow.com/questions/22891583/can-i-generate-authentic-random-number-with-python 
-		
+		Pygame:
+			https://www.pygame.org/docs/ref/display.html
+
+		assets:
+			https://opengameart.org/content/slot-machine-resource-pack
+			
