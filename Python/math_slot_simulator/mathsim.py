@@ -25,9 +25,9 @@ class SlotMachine:
         self.filepath = filepath
         self.reels = reels
         self.paylines = paylines
-        self.credits = initial_credits 
+        self.game_credits = initial_credits 
         self.bet = bet
-        #initialize data tp be used in the local object namespace, so it's able to be referenced. 
+        #initialize data to be used in the local object namespace, so it's able to be referenced. 
         self.game_window = []
         self.paytable = []
         self.reel1pos=0
@@ -44,12 +44,11 @@ class SlotMachine:
     #        reel4 = []
     #        reel5 = []
         reel_data = pd.read_excel(filepath, sheet_name='Reels')
-        # accessed via reel_data['Reel #'][n] where n is the reel position
-        #dataframe_var.shape to get dimensionality: (22,5)    .. so dataframe_var.shape[0] is the rows (depth) and [1] is the columns (width)
+        # dataframe_var.shape to get dimensionality: (22,5)    .. so dataframe_var.shape[0] is the rows (depth) and [1] is the columns (width)
+        ### the reels, here, are the reel strips. 
         self.reel1 = reel_data['Reel 1']
         self.reel2 = reel_data['Reel 2']
         self.reel3 = reel_data['Reel 3']
-        # set random reel positions
         #if(reels==5):
         #     reel4 = reel_data['Reel 4']
         #    reel4pos=random.randint(0,len(reel4)-1)
@@ -72,12 +71,13 @@ class SlotMachine:
         self.build_pay_table()
 
         if(reels == 3):
-            # create virtual window:    (making up unused symbols to track values for deveopment)
-            #game_window = [['gh1', 'gh4', 'gh7'], ['gh2', 'gh5', 'gh8'], ['gh3', 'gh6', 'gh9']]
+            #print("in initialize: three reels")
+            # create virtual window:    (making up unused symbols to track values for deveopment) - also, setting the initial array depth to avoid index errors
+            self.game_window = [['gh1', 'gh4', 'gh7'], ['gh2', 'gh5', 'gh8'], ['gh3', 'gh6', 'gh9']]
             # meaning it's called like game_window[reel][row]
             self.build_game_window(self.reel1pos, self.reel2pos, self.reel3pos)
         elif(reels == 5):
-            game_window = [['gh1', 'gh6', 'gh11', 'gh16', 'gh21'], ['gh2', 'gh7', 'gh12', 'gh17', 'gh22'], ['gh3', 'gh8', 'gh13', 'gh18', 'gh23'], ['gh4', 'gh9', 'gh14', 'gh19', 'gh24'], ['gh5', 'gh10', 'gh15', 'gh20', 'gh25']]
+            self.game_window = [['gh1', 'gh6', 'gh11', 'gh16', 'gh21'], ['gh2', 'gh7', 'gh12', 'gh17', 'gh22'], ['gh3', 'gh8', 'gh13', 'gh18', 'gh23'], ['gh4', 'gh9', 'gh14', 'gh19', 'gh24'], ['gh5', 'gh10', 'gh15', 'gh20', 'gh25']]
             #build_game_window(reel_pos_all)
         else:
             #output logging goes here. 
@@ -86,32 +86,35 @@ class SlotMachine:
         #end initialization
 
     def randomize(self):
-        reel1pos=random.randint(0,len(self.reel1)-1)
-        reel2pos=random.randint(0,len(self.reel2)-1)
-        reel3pos=random.randint(0,len(self.reel3)-1)
+        #print("before randomize: " + str(self.reel1pos) + " " + str(self.reel2pos) + " " + str(self.reel3pos))
+        self.reel1pos=random.randint(0,len(self.reel1)-1)
+        self.reel2pos=random.randint(0,len(self.reel2)-1)
+        self.reel3pos=random.randint(0,len(self.reel3)-1)
         # need to add 5 reel logic to the game window stuff later... going to leave this here as a reminder
-          #if(reels==5):
-         #    reelpos4=random.randint(0,len(reel4)-1)
-         #    reelpos5=random.randint(0,len(reel5)-1)
+        #if(reels==5):
+        #    reelpos4=random.randint(0,len(reel4)-1)
+        #    reelpos5=random.randint(0,len(reel5)-1)
+        print("after randomization, reel positions: " + str(self.reel1pos) + " " + str(self.reel2pos) + " " + str(self.reel3pos))
 
     # adjust credits: 
     def adjust_credits(self,value):
         # bets should be negative values, wins or deposits positive
-        print("Adjusting credits at " + value)
-        self.credits = self.credits + value
+        print("Adjusting credits at " + str(value))
+        self.game_credits = self.game_credits + value
+        print("Credits now: " + str(self.game_credits))
 
     def return_credits(self):
-         return self.credits
+         return self.game_credits
 
-     # note will need to change these inputs, to allow for >3
+    # note will need to change these inputs, to allow for >3
     def build_game_window(self, reel1pos, reel2pos, reel3pos):
         #for now: 3 reels, more logic later - like sending a list of the positions, so it's size agnostic. 
         #     sets the window positions (reminder, game_window[row][reel])
         #if reel1 pos == 0 (or reel's 2 or three), then set (game_window[reel][0]) as reelN[len(reel1)-1)
         # else use reelN[reelposN-1]
-        print(str(reel1pos) + " " + str(reel2pos) + " " + str(reel3pos))
+        #print(str(reel1pos) + " " + str(reel2pos) + " " + str(reel3pos) + " " + str(len(self.reel1)-1) + " " + str(self.reel1[len(self.reel1)-1]))
         if(self.reel1pos==0):
-             self.game_window[0][0]=self.reel1[len(self.reel1)-1]
+            self.game_window[0][0]=self.reel1[len(self.reel1)-1]
         else:
             self.game_window[0][0]=self.reel1[self.reel1pos-1]
         if(self.reel2pos==0):
@@ -139,14 +142,14 @@ class SlotMachine:
         if(self.reel3pos==len(self.reel3)-1):
             self.game_window[2][2]=self.reel3[0]
         else:
-            self.game_window[2][2]=self.reel3[self.reel3pos+1] 
+            self.game_window[2][2]=self.reel3[self.reel3pos+1]
         ##handling for reels 4 and 5 could be here, when configured. If reels==5, do the same thing as above for all three positions, but for 5x5
-
+        print(self.game_window)
 
     def build_pay_table(self):
         #to replace with loading it in...  so in excel, 4 columns, reelNum text fields followed by the win amount
         #accessible in object with:  paytable[each_win_line from 0 to len-1][0 to len-1 for each symbol and the value]
-        self.paytable =     [
+        self.paytable = [
             ('W','W','W',100),
             ('B7','B7','B7',20),
             ('R7','R7','R7',20),
@@ -156,7 +159,7 @@ class SlotMachine:
             ('1B','1B','1B',1),
             ('*B','*B','*B',0.4)
         ]
-        wildsymbols = ['W']
+        self.wildsymbols = ['W']
 
     def build_paylines(self):
         #first payline: middle line; the 'reel positions'
@@ -186,54 +189,57 @@ class SlotMachine:
         #check payline from the reels, sending over the gamewindow array
         # so..  for each payline, grab the symbols from the game window compare to the whole paytable win list 
         #if it matches one of those lines (wild logic here), then pull the len-1 entry for that line
-        for line in paylines:
+        for line in self.paylines:
             symbols=[]
             for reel_pos in line:
-                symbols.append(game_window[reel_pos[0]][reel_pos[1]])
+                symbols.append(self.game_window[reel_pos[0]][reel_pos[1]])
             #print(str(symbols))  # this is pulling game window correctly
              #test against paytable
-            for payline in paytable:
+            for payline in self.paytable:
                 #print(str(payline) + " ...")
                 #from here: do the symbols for each reel spot match? so symbol[]
-                for reelnum in range(reels-1):
+                for reelnum in range(self.reels-1):
+                	### NOTE: Winning logic is *HERE* 
                     # TODO: will need to add logic for "wilds" ***   ***   ***   ***   ***   ****
-                    if((symbols[reelnum] != payline[reelnum]) or (symbols[reelnum] in wildsymbols)):
+                    if((symbols[reelnum] != payline[reelnum]) or (symbols[reelnum] in self.wildsymbols)):
                         #if they do not match at any time, return false 
-                        return false
+                        return False
                     else:
                         #payout is the last entry on the payline
                         print("WIN! winning" + payline[len(payline)-1])
-                        adjust_credits(payline[len(payline)-1])
+                        self.adjust_credits(payline[len(payline)-1])
                         return true
 
 
     def debug_win_jackpot(self):
         # only for testing, REMOVE BEFORE ANY PRODUCTION LEVEL TESTING
-        build_game_window(2, 2, 2)
+        self.build_game_window(2, 2, 2)
 
     # spin reels: 
     def spin_reels(self):
-        if(self.credits < (self.bet * self.paylines)):
+        total_bet = self.bet * float(paylines_total)
+        if(self.game_credits < total_bet):
             # return "not enough credits!" or something and be done. -- needs a little work
             print("Not enough credits")
             quit()
             #.. later: when we run out of credits, but want to test a total # of runs..  a cash injection? 
-
-        adjust_credits((self.bet * self.paylines * -1))
+        print("betting: " + str(total_bet*-1))
+        self.adjust_credits(total_bet * -1)
         #STUB: remove wallet value: bet x paylines; check to see if player has enough
 
     #     randomly choose reel positions for each of the reels
-        randomize()
-        build_game_window(reel1pos, reel2pos, reel3pos)
-        isAWin()
+        self.randomize()
+        self.build_game_window(self.reel1pos, self.reel2pos, self.reel3pos)
+        self.isAWin()
 
 
 class Simulator():
     """ simulator class: takes in the SlotMachine class object, does stuff and tracks it. """
     def __init__(self, sm, simnum):
         for iteration in range(simnum):
+            #print("spinning")
             sm.spin_reels()
-            print("spun! x " + str(iteration))
+            #print("spun! x " + str(iteration))
         # initialize: initial wallet input, number of plays, and keeps records for printing for now
 
 if __name__ == '__main__':
@@ -241,18 +247,18 @@ if __name__ == '__main__':
     # any simulator head / ui will be here.
     #settings; from file load or UI, later. 
     reel_total = 3
-    paylines = 9
+    paylines_total = 9
 
     # UI Values 
     bet = 0.25
     # so, initially, each total bet is 2.25
     # .. simulator settings: 
-    initial_credits= 1000
+    initial_credits = 1000
     simruns = 10
 
     # set the filepath - this is to be moved to the configuration file / ui input later.  literally the worst way to do this atm: 
     filepath='/Users/jdyer/Documents/GitHub/JD-Programming-examples/Python/math_slot_simulator/PARishSheets.xlsx'
     # build slot machine with the filepath
-    sm = SlotMachine(filepath, reel_total, paylines, bet, initial_credits)
+    sm = SlotMachine(filepath, reel_total, paylines_total, bet, initial_credits)
     # start the simulator using the slot machine. 
     sim = Simulator(sm, simruns)
