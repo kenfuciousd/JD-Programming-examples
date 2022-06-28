@@ -13,8 +13,10 @@
 import sys
 import os
 import random
-import pandas as pd
-import matplotlib.pyplot as plt
+import numpy as np        # random number generator, rounding
+import pandas as pd     # for reading Excel
+import matplotlib.pyplot as plt  # for displaying math 
+import tkinter as tk    # for the gui
 #import pygame
 
 ### slot machine class
@@ -56,7 +58,7 @@ class SlotMachine:
         #    reel5pos=random.randint(0,len(reel5)-1)
 
         # chooses the random positions for each of the reels, eventually add the total reel number to pass
-        self.randomize()
+        self.randomize_reels()
         #reel1pos=random.randint(0,len(reel1)-1)
         #reel2pos=random.randint(0,len(reel2)-1)
         #reel3pos=random.randint(0,len(reel3)-1)
@@ -85,7 +87,7 @@ class SlotMachine:
             quit()
         #end initialization
 
-    def randomize(self):
+    def randomize_reels(self):
         #print("before randomize: " + str(self.reel1pos) + " " + str(self.reel2pos) + " " + str(self.reel3pos))
         self.reel1pos=random.randint(0,len(self.reel1)-1)
         self.reel2pos=random.randint(0,len(self.reel2)-1)
@@ -94,17 +96,21 @@ class SlotMachine:
         #if(reels==5):
         #    reelpos4=random.randint(0,len(reel4)-1)
         #    reelpos5=random.randint(0,len(reel5)-1)
-        print("after randomization, reel positions: " + str(self.reel1pos) + " " + str(self.reel2pos) + " " + str(self.reel3pos))
+        #print("after randomization, reel positions: " + str(self.reel1pos) + " " + str(self.reel2pos) + " " + str(self.reel3pos))
 
-    # adjust credits: 
     def adjust_credits(self,value):
-        # bets should be negative values, wins or deposits positive
-        print("Adjusting credits at " + str(value))
-        self.game_credits = self.game_credits + value
-        print("Credits now: " + str(self.game_credits))
+         # bets should be negative values, wins or deposits positive
+        #print("Adjusting credits at " + str(value))
+        self.game_credits = np.round(self.game_credits + value, 2)
+        #print("Adjusting credits, now: " + str(self.game_credits))
 
     def return_credits(self):
          return self.game_credits
+
+    def reset_wildsymbols(self):
+        """this function is used to reset the wildsymbols list, to assist the 'is_a_win' function, so that "any bars" or "any 7s", etc, don't get 'stuck' in the test """
+        self.wildsymbols = ['W']
+        #print("resetting wildsymbols: " + str(self.wildsymbols))
 
     # note will need to change these inputs, to allow for >3
     def build_game_window(self, reel1pos, reel2pos, reel3pos):
@@ -144,7 +150,7 @@ class SlotMachine:
         else:
             self.game_window[2][2]=self.reel3[self.reel3pos+1]
         ##handling for reels 4 and 5 could be here, when configured. If reels==5, do the same thing as above for all three positions, but for 5x5
-        print(self.game_window)
+        #print(self.game_window)
 
     def build_pay_table(self):
         #to replace with loading it in...  so in excel, 4 columns, reelNum text fields followed by the win amount
@@ -159,6 +165,7 @@ class SlotMachine:
             ('1B','1B','1B',1),
             ('*B','*B','*B',0.4)
         ]
+        # determine baseline wilds, which will always apply when encounterd
         self.wildsymbols = ['W']
 
     def build_paylines(self):
@@ -185,31 +192,61 @@ class SlotMachine:
         # this should cycle the payline list, (each line pulling the 3 coordinates) 
         # then testing each of those against each paytable line
         # ... with special consideration for wilds, denoted *
-    def isAWin(self):
+    def is_a_win(self):
         #check payline from the reels, sending over the gamewindow array
         # so..  for each payline, grab the symbols from the game window compare to the whole paytable win list 
         #if it matches one of those lines (wild logic here), then pull the len-1 entry for that line
         for line in self.paylines:
             symbols=[]
+            winbreak = 0
             for reel_pos in line:
                 symbols.append(self.game_window[reel_pos[0]][reel_pos[1]])
-            #print(str(symbols))  # this is pulling game window correctly
-             #test against paytable
+            #print("testing symbols: " + str(symbols) )  # this is pulling game window correctly
+            #test against paytable
+            self.reset_wildsymbols()
             for payline in self.paytable:
-                #print(str(payline) + " ...")
+                #######  this is where it needs reworked ######
+                #print(".. against payline" + str(payline) + " ...")
                 #from here: do the symbols for each reel spot match? so symbol[]
-                for reelnum in range(self.reels-1):
-                	### NOTE: Winning logic is *HERE* 
-                    # TODO: will need to add logic for "wilds" ***   ***   ***   ***   ***   ****
-                    if((symbols[reelnum] != payline[reelnum]) or (symbols[reelnum] in self.wildsymbols)):
-                        #if they do not match at any time, return false 
-                        return False
-                    else:
-                        #payout is the last entry on the payline
-                        print("WIN! winning" + payline[len(payline)-1])
-                        self.adjust_credits(payline[len(payline)-1])
-                        return true
+                for reelnum in range(0, self.reels):
+                    # reworking logic..
+                    #print(" - testing reel: " + str(reelnum+1) + " for " + str(symbols[reelnum]) + " versus " + str(payline[reelnum]))
+                    # TODO: will need to add logic for "wilds" ***   ***   ***   ***   ***   ****\
 
+                    if "*" in str(payline[reelnum]):
+                        #print("Found an Any Type Symbol")
+                        if payline[reelnum] == '*B':
+                            for sym in ['B7', '1B','2B', '3B']:
+                            # eventually, logic to include the right ones from the reel.
+                                self.wildsymbols.append(sym)
+                            #print(" - appended Bars")
+                        elif payline[reelnum] == '*7':
+                            for sym in ['B7','R7']:
+                                self.wildsymbols.append(sym)
+                            #print(" - appended 7s")
+
+                    # win logic                     ### NOTE: Winning logic is *HERE* 
+                    if((symbols[reelnum] == payline[reelnum]) or (symbols[reelnum] in self.wildsymbols)):
+                        #if they do not match at any time, return false 
+                        #print("Match: " + symbols[reelnum]  + " vs " + payline[reelnum] + " on reelnum: " + str(reelnum+1)) # + " and testing reels: " + str(self.reels))
+                        #payout is the last entry on the payline
+                        if(reelnum + 1 == self.reels):
+                            self.reset_wildsymbols()
+                            print("WIN! winning: " + str(payline[len(payline)-1]) + " credits, and the payline: " + str(symbols))
+                            self.adjust_credits(payline[len(payline)-1])
+                            winbreak = 1
+                            #return True
+                    else:
+                        self.reset_wildsymbols()
+                        break
+                        #else, if it's the last reel, and it didn't match, 
+                        #if(reelnum == self.reels):
+                        #    return False
+                ##### double check above
+                # this is to not give double rewards to the same line - in python, the test is nested, and break doesn't work inside of it due to logic. 
+                if(winbreak == 1):
+                    winbreak = 0
+                    break
 
     def debug_win_jackpot(self):
         # only for testing, REMOVE BEFORE ANY PRODUCTION LEVEL TESTING
@@ -220,17 +257,18 @@ class SlotMachine:
         total_bet = self.bet * float(paylines_total)
         if(self.game_credits < total_bet):
             # return "not enough credits!" or something and be done. -- needs a little work
-            print("Not enough credits")
+            print("Not enough credits, $" + str(total_bet) + " is required.")
             quit()
             #.. later: when we run out of credits, but want to test a total # of runs..  a cash injection? 
-        print("betting: " + str(total_bet*-1))
+        #print("betting: " + str(total_bet*-1))
         self.adjust_credits(total_bet * -1)
         #STUB: remove wallet value: bet x paylines; check to see if player has enough
 
     #     randomly choose reel positions for each of the reels
-        self.randomize()
+        self.randomize_reels()
+        #self.debug_win_jackpot()
         self.build_game_window(self.reel1pos, self.reel2pos, self.reel3pos)
-        self.isAWin()
+        self.is_a_win()
 
 
 class Simulator():
@@ -239,8 +277,38 @@ class Simulator():
         for iteration in range(simnum):
             #print("spinning")
             sm.spin_reels()
-            #print("spun! x " + str(iteration))
+            print("spin " + str(iteration) + " and credits $" + str(sm.return_credits()))
         # initialize: initial wallet input, number of plays, and keeps records for printing for now
+
+class Gui():
+    def __init__:
+        self.root = tk.Tk()
+        self.root.geometry("200x150")
+        self.frame = Frame(root)
+        self.frame.pack()
+
+        # text/value entries 
+        self.bet_entry = Entry(frame, width = 8)
+        self.bet_entry.insert(0,0.25)
+        self.bet_entry.pack(padx = 15, pady = 15)
+        self.credit_entry = Entry(frame, width = 8)
+        self.credit_entry.insert(0,1000)
+        self.credit_entry.pack(padx = 15, pady = 15)
+        self.simrun_entry = Entry(frame, width = 8)
+        self.simrun_entry.insert(0,100)
+        self.simrun_entry.pack(padx = 15, pady = 15)
+
+        #input file...
+        #filepath='/Users/jdyer/Documents/GitHub/JD-Programming-examples/Python/math_slot_simulator/PARishSheets.xlsx'
+
+        #Run Button
+        self.run_button = tk.Button(self, test"Run Simulation")
+        self.run_button['command'] = self.button_clicked
+        self.root.mainloop
+
+    def button_clicked(self):
+        #start simulation here...
+
 
 if __name__ == '__main__':
     """ main class: take input and call the simulator. """
@@ -254,10 +322,14 @@ if __name__ == '__main__':
     # so, initially, each total bet is 2.25
     # .. simulator settings: 
     initial_credits = 1000
-    simruns = 10
+    simruns = 100
 
     # set the filepath - this is to be moved to the configuration file / ui input later.  literally the worst way to do this atm: 
     filepath='/Users/jdyer/Documents/GitHub/JD-Programming-examples/Python/math_slot_simulator/PARishSheets.xlsx'
+
+    # GUI call here
+    #sim_gui = Gui()
+
     # build slot machine with the filepath
     sm = SlotMachine(filepath, reel_total, paylines_total, bet, initial_credits)
     # start the simulator using the slot machine. 
