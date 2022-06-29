@@ -17,6 +17,9 @@ import numpy as np        # random number generator, rounding
 import pandas as pd     # for reading Excel
 import matplotlib.pyplot as plt  # for displaying math 
 import tkinter as tk    # for the gui
+import tkinter.ttk as ttk
+import tkinter.messagebox as messagebox
+from tkinter import *
 #import pygame
 
 ### slot machine class
@@ -37,14 +40,6 @@ class SlotMachine:
         self.reel3pos=0
         self.wildsymbols = []
 
-        # currently setting this to excel formatting. If we decide to use another input format, this should become the "excel loader"
-        # initialize reels, load reels info
-    #    reel1 = []
-    #    reel2 = []
-    #    reel3 = []
-    #    if(reels==5):
-    #        reel4 = []
-    #        reel5 = []
         reel_data = pd.read_excel(filepath, sheet_name='Reels')
         # dataframe_var.shape to get dimensionality: (22,5)    .. so dataframe_var.shape[0] is the rows (depth) and [1] is the columns (width)
         ### the reels, here, are the reel strips. 
@@ -59,11 +54,8 @@ class SlotMachine:
 
         # chooses the random positions for each of the reels, eventually add the total reel number to pass
         self.randomize_reels()
-        #reel1pos=random.randint(0,len(reel1)-1)
-        #reel2pos=random.randint(0,len(reel2)-1)
-        #reel3pos=random.randint(0,len(reel3)-1)
 
-        #     load paytables
+        # load paytables
         paytable_data = pd.read_excel(filepath, sheet_name='Paytable3')
         # this is where we will call the paytable loader with the data
         self.build_paylines()
@@ -240,8 +232,6 @@ class SlotMachine:
                         self.reset_wildsymbols()
                         break
                         #else, if it's the last reel, and it didn't match, 
-                        #if(reelnum == self.reels):
-                        #    return False
                 ##### double check above
                 # this is to not give double rewards to the same line - in python, the test is nested, and break doesn't work inside of it due to logic. 
                 if(winbreak == 1):
@@ -280,35 +270,67 @@ class Simulator():
             print("spin " + str(iteration) + " and credits $" + str(sm.return_credits()))
         # initialize: initial wallet input, number of plays, and keeps records for printing for now
 
-class Gui():
-    def __init__:
-        self.root = tk.Tk()
-        self.root.geometry("200x150")
-        self.frame = Frame(root)
-        self.frame.pack()
+class Gui(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.slot_ready = False
+        self.geometry("400x300")
+        #self.frame = ttk.Frame(self)
+        #self.frame.pack()
 
-        # text/value entries 
-        self.bet_entry = Entry(frame, width = 8)
-        self.bet_entry.insert(0,0.25)
-        self.bet_entry.pack(padx = 15, pady = 15)
-        self.credit_entry = Entry(frame, width = 8)
-        self.credit_entry.insert(0,1000)
-        self.credit_entry.pack(padx = 15, pady = 15)
-        self.simrun_entry = Entry(frame, width = 8)
-        self.simrun_entry.insert(0,100)
-        self.simrun_entry.pack(padx = 15, pady = 15)
-
+        # default text/value entries
+        self.reel_total = 3
+        self.paylines_total = 9 
+        self.bet = 0.25
+        # so, initially, each total bet is 2.25
+        # .. simulator settings: 
+        self.initial_credits = 1000
+        self.simruns = 10
+        self.filepath='/Users/jdyer/Documents/GitHub/JD-Programming-examples/Python/math_slot_simulator/PARishSheets.xlsx'
+        self.label_bet = tk.Label(self, text="Filepath")
+        self.label_bet.pack( side = LEFT)
+        # UI element values
+        self.file_entry = ttk.Entry(self)
+        self.file_entry.insert(0,"./PARishSheets.xlsx")
+        self.file_entry.pack(padx = 15, pady = 15, side = RIGHT)
         #input file...
         #filepath='/Users/jdyer/Documents/GitHub/JD-Programming-examples/Python/math_slot_simulator/PARishSheets.xlsx'
-
+        #button entries
+        self.label_bet = tk.Label(self, text="Bet")
+        self.label_bet.pack( side = LEFT)
+        self.bet_entry = ttk.Entry(self, width = 8)
+        self.bet_entry.insert(0,self.bet)
+        self.bet_entry.pack(padx = 15, pady = 15, side = RIGHT)
+        self.label_cred = tk.Label(self, text="Starting Credits")
+        self.label_cred.pack( side = LEFT)
+        self.credit_entry = ttk.Entry(self, width = 8)
+        self.credit_entry.insert(0,self.initial_credits)
+        self.credit_entry.pack(padx = 15, pady = 15, side = RIGHT)
+        self.label_build_sim = tk.Label(self, text="1. Build the Virtual Slot ")
+        self.label_build_sim.pack( side = LEFT)
+        self.run_button = ttk.Button(self, text="Build Virtual Slot")
+        self.run_button['command'] = self.sim_button_clicked       
+        self.label_simruns = tk.Label(self, text="Simulator Runs")
+        self.label_simruns.pack( side = LEFT)
+        self.simrun_entry = ttk.Entry(self, width = 10)
+        self.simrun_entry.insert(0,self.simruns)
+        self.simrun_entry.pack(padx = 15, pady = 15, side = RIGHT)
         #Run Button
-        self.run_button = tk.Button(self, test"Run Simulation")
-        self.run_button['command'] = self.button_clicked
-        self.root.mainloop
+        self.run_button = ttk.Button(self, text="2. Run Simulation ")
+        self.run_button['command'] = self.sim_button_clicked
+        self.mainloop()
 
-    def button_clicked(self):
+    def build_slot(self, filepath, reels, paylines, bet, initial_credits):
+        self.sm = SlotMachine(self.filepath, self.reel_total, self.paylines_total, self.bet, self.initial_credits)
+        self.slot_ready = True
+
+    def sim_button_clicked(self):
         #start simulation here...
-
+        print("buttonpress")
+        if(self.slot_ready == True):
+            sim = Simulator(self.sm, self.simruns)
+        else:
+            print("Slot needs to be loaded first.")
 
 if __name__ == '__main__':
     """ main class: take input and call the simulator. """
@@ -322,13 +344,14 @@ if __name__ == '__main__':
     # so, initially, each total bet is 2.25
     # .. simulator settings: 
     initial_credits = 1000
-    simruns = 100
+    simruns = 10
 
     # set the filepath - this is to be moved to the configuration file / ui input later.  literally the worst way to do this atm: 
     filepath='/Users/jdyer/Documents/GitHub/JD-Programming-examples/Python/math_slot_simulator/PARishSheets.xlsx'
 
     # GUI call here
-    #sim_gui = Gui()
+    sim_gui = Gui()
+    #sim_gui.mainloop()
 
     # build slot machine with the filepath
     sm = SlotMachine(filepath, reel_total, paylines_total, bet, initial_credits)
