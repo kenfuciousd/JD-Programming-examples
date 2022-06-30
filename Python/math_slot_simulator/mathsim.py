@@ -197,17 +197,19 @@ class SlotMachine:
         #check payline from the reels, sending over the gamewindow array
         # so..  for each payline, grab the symbols from the game window compare to the whole paytable win list 
         #if it matches one of those lines (wild logic here), then pull the len-1 entry for that line
+        iteration = 0
         for line in self.paylines:
             symbols=[]
             winbreak = 0
+            iteration += 1
             for reel_pos in line:
                 symbols.append(self.game_window[reel_pos[0]][reel_pos[1]])
-            #print("testing symbols: " + str(symbols) )  # this is pulling game window correctly
+            print(f"    testing payline {iteration} with symbols: {str(symbols)}")  # this is pulling game window correctly
             #test against paytable
             self.reset_wildsymbols()
             for payline in self.paytable:
                 #######  this is where it needs reworked ######
-                #print(".. against payline" + str(payline) + " ...")
+                #print(".. against combo: " + str(payline) + " ...")
                 #from here: do the symbols for each reel spot match? so symbol[]
                 for reelnum in range(0, self.reels):
                     # reworking logic..
@@ -229,11 +231,11 @@ class SlotMachine:
                     # win logic                     ### NOTE: Winning logic is *HERE* 
                     if((symbols[reelnum] == payline[reelnum]) or (symbols[reelnum] in self.wildsymbols)):
                         #if they do not match at any time, return false 
-                        #print("Match: " + symbols[reelnum]  + " vs " + payline[reelnum] + " on reelnum: " + str(reelnum+1)) # + " and testing reels: " + str(self.reels))
+                        print("        Match: " + symbols[reelnum]  + " vs " + payline[reelnum] + " on reelnum: " + str(reelnum+1)) # + " and testing reels: " + str(self.reels))
                         #payout is the last entry on the payline
                         if(reelnum + 1 == self.reels):
                             self.reset_wildsymbols()
-                            #print("WIN! winning: " + str(payline[len(payline)-1]) + " credits, and the payline: " + str(symbols))
+                            print("WIN! winning: " + str(payline[len(payline)-1]) + " credits, and the payline: " + str(symbols))
                             self.adjust_credits(payline[len(payline)-1])
                             winbreak = 1
                             #return True
@@ -257,20 +259,17 @@ class SlotMachine:
         total_bet = self.bet * float(self.paylines_total)
         #print("checking credits: " + self.game_credits + " < " + str(total_bet))
         #### PROBABLY UNNECESSARY NOW, CHECK LATER #####
-        if(float(self.game_credits) < total_bet):
-            # return "not enough credits!" or something and be done. -- needs a little work
-            print("Not enough credits, $" + str(total_bet) + " is required.")
-            #quit()  ###### This isn't right - it quits the whole program.  we just want it to stop the simulation..
-
+        #if(float(self.game_credits) < total_bet):
+        #    # return "not enough credits!" or something and be done. -- needs a little work
+        #    print("Not enough credits, $" + str(total_bet) + " is required.")
+        #    #quit()  ###### This isn't right - it quits the whole program.  we just want it to stop the simulation..
 
             #.. later: when we run out of credits, but want to test a total # of runs..  a cash injection? 
         #print("betting: " + str(total_bet*-1))
         self.adjust_credits(total_bet * -1)
         #STUB: remove wallet value: bet x paylines; check to see if player has enough
-
-    #     randomly choose reel positions for each of the reels
+        #randomly choose reel positions for each of the reels
         self.randomize_reels()
-        #self.debug_win_jackpot()
         self.build_game_window(self.reel1pos, self.reel2pos, self.reel3pos)
         self.is_a_win()
 
@@ -292,14 +291,13 @@ class Simulator():
             if( self.this_bet > float(self.sm.game_credits) ):
                 # can't really send back a status to the gui?? 
                 #simgui.slot_check.set("[Reset Slot]")
-                self.plot_result()
                 print("Not enough credits, $" + str(self.this_bet) + " is required.")
                 break
             else:
                 self.sm.spin_reels()
                 self.incremental_credits.append(self.sm.return_credits())
                 self.spins.append(iteration)
-                print("spin " + str(iteration) + " and credits $" + str(self.sm.return_credits()))
+                print(f"spin {str(iteration)} and credits ${str(self.sm.return_credits())}")
     def plot_result(self):
         #plt.style.use('_mpl-gallery')
         plt.ylabel('Credits')
@@ -324,8 +322,8 @@ class Gui(tk.Tk):
         self.slot_ready = False
         # so, initially, each total bet is 2.25
         # .. simulator settings: 
-        self.initial_credits = IntVar(self, value = 1000)
-        self.simruns = IntVar(self, value = 10)
+        self.initial_credits = IntVar(self, value = 100)
+        self.simruns = IntVar(self, value = 500)
         self.filepath = StringVar(self, value = "./PARishSheets.xlsx")
         self.slot_check = StringVar(self, value = "[Click 1. First]")
         #print(f"{self.filepath.get()}")
@@ -334,6 +332,7 @@ class Gui(tk.Tk):
 
     def filepath_dialog_button(self): 
         self.filepath = fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("excel files","*.xlsx"), ("all files","*.*")) )
+
 
     def build_slot_button(self):
         # use the current values
@@ -362,7 +361,7 @@ class Gui(tk.Tk):
         self.label_filepath = tk.Label(self, text="Filepath ")
         self.label_filepath.grid(row = 0, column = 0)
         #self.label_filepath.pack( side = LEFT)
-        self.file_entry = ttk.Entry(self, textvariable = self.filepath)
+        self.file_entry = ttk.Entry(self, textvariable = self.filepath, text=self.filepath)
         #self.file_entry.insert(0,self.filepath)
         self.file_entry.grid(row = 0, column = 1)
         #self.file_entry.pack(padx = 15, pady = 15, side = RIGHT)
@@ -397,7 +396,7 @@ class Gui(tk.Tk):
         self.run_slots_button.grid(row = 4, column = 2)
         #self.run_slots_button.pack()
         # simulator info
-        self.label_simruns = tk.Label(self, text="Simulator Runs" )
+        self.label_simruns = tk.Label(self, text="Simulator Total Spins" )
         self.label_simruns .grid(row = 5, column = 0, columnspan=2)
         #self.label_simruns.pack( side = LEFT)
         self.simrun_entry = ttk.Entry(self, width = 10, textvariable = self.simruns)
