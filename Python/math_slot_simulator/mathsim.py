@@ -171,7 +171,7 @@ class SlotMachine:
 
     def build_paylines(self):
         #first payline: middle line; the 'reel positions'
-#        paylines=[(0,1),(1,1),(2,1)]
+        #paylines=[(0,1),(1,1),(2,1)]
 
         # this is what should be loaded from the excel sheet later
         #referenced by paylines[full-payline][payline-item-number][either 0 for reel, or 1 for position]
@@ -233,7 +233,7 @@ class SlotMachine:
                         #payout is the last entry on the payline
                         if(reelnum + 1 == self.reels):
                             self.reset_wildsymbols()
-                            print("WIN! winning: " + str(payline[len(payline)-1]) + " credits, and the payline: " + str(symbols))
+                            #print("WIN! winning: " + str(payline[len(payline)-1]) + " credits, and the payline: " + str(symbols))
                             self.adjust_credits(payline[len(payline)-1])
                             winbreak = 1
                             #return True
@@ -256,6 +256,7 @@ class SlotMachine:
         #print("bet is " + str(self.bet) + " and paylines is " + str(self.paylines_total))
         total_bet = self.bet * float(self.paylines_total)
         #print("checking credits: " + self.game_credits + " < " + str(total_bet))
+        #### PROBABLY UNNECESSARY NOW, CHECK LATER #####
         if(float(self.game_credits) < total_bet):
             # return "not enough credits!" or something and be done. -- needs a little work
             print("Not enough credits, $" + str(total_bet) + " is required.")
@@ -277,18 +278,34 @@ class SlotMachine:
 class Simulator():
     """ simulator class: takes in the SlotMachine class object, does stuff and tracks it. """
     def __init__(self, sm, simnum):
-        this_bet = sm.bet * float(sm.paylines_total)
-        for iteration in range(simnum):
+        self.simnum = simnum
+        self.sm = sm
+        self.this_bet = sm.bet * float(sm.paylines_total)
+        self.incremental_credits = []
+        self.spins = []
+        self.run_sim()
+        self.plot_result()
+
+    def run_sim(self):
+        for iteration in range(self.simnum):
             #print("spinning")
-            if( this_bet > float(sm.game_credits) ):
-                sm.cb_check.set(0)
-                print("Not enough credits, $" + str(this_bet) + " is required.")
+            if( self.this_bet > float(self.sm.game_credits) ):
+                # can't really send back a status to the gui?? 
+                #simgui.slot_check.set("[Reset Slot]")
+                self.plot_result()
+                print("Not enough credits, $" + str(self.this_bet) + " is required.")
                 break
             else:
-                sm.spin_reels()
-                print("spin " + str(iteration) + " and credits $" + str(sm.return_credits()))
-
-        # initialize: initial wallet input, number of plays, and keeps records for printing for now
+                self.sm.spin_reels()
+                self.incremental_credits.append(self.sm.return_credits())
+                self.spins.append(iteration)
+                print("spin " + str(iteration) + " and credits $" + str(self.sm.return_credits()))
+    def plot_result(self):
+        #plt.style.use('_mpl-gallery')
+        plt.ylabel('Credits')
+        plt.xlabel('Spins')
+        plt.plot(self.spins, self.incremental_credits)
+        plt.show()
 
 class Gui(tk.Tk):
 
@@ -310,7 +327,7 @@ class Gui(tk.Tk):
         self.initial_credits = IntVar(self, value = 1000)
         self.simruns = IntVar(self, value = 10)
         self.filepath = StringVar(self, value = "./PARishSheets.xlsx")
-        self.cb_check = IntVar(self, value = 0)
+        self.slot_check = StringVar(self, value = "[Click 1. First]")
         #print(f"{self.filepath.get()}")
         self.create_gui()
         #self.mainloop()
@@ -328,7 +345,7 @@ class Gui(tk.Tk):
        #print(f"{filepath}, {reel_total}, {paylines_total}, {bet}, {initial_credits}")
         self.sm = SlotMachine(filepath, reel_total, paylines_total, bet, initial_credits)
         self.slot_ready = True
-        self.cb_check.set(1)
+        self.slot_check.set("[Slot Built]")
         # a gui checkbox to show it was done? in the build column in slot 0?
 
     def sim_button_clicked(self):
@@ -373,8 +390,8 @@ class Gui(tk.Tk):
         self.label_build_slot = tk.Label(self, text="1. Build Virtual Slot ")
         self.label_build_slot.grid(row = 3, column = 0)
         #self.label_build_slot.pack( side = LEFT)
-        self.cb_chk = tk.Checkbutton(self, textvariable=self.cb_check, onvalue = 1)
-        self.cb_check_box.grid(row = 3, column = 1)
+        self.slot_check_box = tk.Label(self, textvariable=self.slot_check)
+        self.slot_check_box.grid(row = 3, column = 1)
         self.run_slots_button = tk.Button(self, text="1. Build Virtual Slot", command = self.build_slot_button)
         #self.run_slots_button['command'] = self.build_slot_button()
         self.run_slots_button.grid(row = 4, column = 2)
@@ -404,8 +421,11 @@ class Gui(tk.Tk):
         ## plot output, graph and display
 
 if __name__ == '__main__':
-    """ main class: take input and call the simulator. """
-    # any simulator head / ui will be here.
+    """ main class: take input and call the GUI, which contains the simulator. """
+    # GUI call here - this handles everything else, since it's ui / button driven 
+    sim_gui = Gui()
+    sim_gui.mainloop()
+
     #settings; from file load or UI, later. 
     #reel_total = 3
     #paylines_total = 9
@@ -420,9 +440,6 @@ if __name__ == '__main__':
     # set the filepath - this is to be moved to the configuration file / ui input later.  literally the worst way to do this atm: 
     #filepath='/Users/jdyer/Documents/GitHub/JD-Programming-examples/Python/math_slot_simulator/PARishSheets.xlsx'
 
-    # GUI call here
-    sim_gui = Gui()
-    sim_gui.mainloop()
     # build slot machine with the filepath
 #    sm = SlotMachine(filepath, reel_total, paylines_total, bet, initial_credits)
     # start the simulator using the slot machine. 
