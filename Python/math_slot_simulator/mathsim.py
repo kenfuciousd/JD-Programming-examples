@@ -259,7 +259,9 @@ class SlotMachine:
         if(float(self.game_credits) < total_bet):
             # return "not enough credits!" or something and be done. -- needs a little work
             print("Not enough credits, $" + str(total_bet) + " is required.")
-            quit()
+            #quit()  ###### This isn't right - it quits the whole program.  we just want it to stop the simulation..
+
+
             #.. later: when we run out of credits, but want to test a total # of runs..  a cash injection? 
         #print("betting: " + str(total_bet*-1))
         self.adjust_credits(total_bet * -1)
@@ -275,17 +277,24 @@ class SlotMachine:
 class Simulator():
     """ simulator class: takes in the SlotMachine class object, does stuff and tracks it. """
     def __init__(self, sm, simnum):
+        this_bet = sm.bet * float(sm.paylines_total)
         for iteration in range(simnum):
             #print("spinning")
-            sm.spin_reels()
-            print("spin " + str(iteration) + " and credits $" + str(sm.return_credits()))
+            if( this_bet > float(sm.game_credits) ):
+                sm.cb_check.set(0)
+                print("Not enough credits, $" + str(this_bet) + " is required.")
+                break
+            else:
+                sm.spin_reels()
+                print("spin " + str(iteration) + " and credits $" + str(sm.return_credits()))
+
         # initialize: initial wallet input, number of plays, and keeps records for printing for now
 
 class Gui(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.geometry("400x500")
+        self.geometry("500x500")
         self.title("Slot Simulator")
         self.columnconfigure(0, weight = 1)
         self.columnconfigure(1, weight = 1)
@@ -301,9 +310,9 @@ class Gui(tk.Tk):
         self.initial_credits = IntVar(self, value = 1000)
         self.simruns = IntVar(self, value = 10)
         self.filepath = StringVar(self, value = "./PARishSheets.xlsx")
+        self.cb_check = IntVar(self, value = 0)
         #print(f"{self.filepath.get()}")
         self.create_gui()
-        #self.run_sim_button.pack()
         #self.mainloop()
 
     def filepath_dialog_button(self): 
@@ -319,6 +328,7 @@ class Gui(tk.Tk):
        #print(f"{filepath}, {reel_total}, {paylines_total}, {bet}, {initial_credits}")
         self.sm = SlotMachine(filepath, reel_total, paylines_total, bet, initial_credits)
         self.slot_ready = True
+        self.cb_check.set(1)
         # a gui checkbox to show it was done? in the build column in slot 0?
 
     def sim_button_clicked(self):
@@ -339,48 +349,59 @@ class Gui(tk.Tk):
         #self.file_entry.insert(0,self.filepath)
         self.file_entry.grid(row = 0, column = 1)
         #self.file_entry.pack(padx = 15, pady = 15, side = RIGHT)
-        self.file_button = tk.Button(self, text="...", command = self.filepath_dialog_button())
+        self.file_button = tk.Button(self, text="...", command = self.filepath_dialog_button)
         self.file_button['command'] = self.filepath_dialog_button()
         self.file_button.grid(row = 0, column = 2)
         #input file...
         #filepath='/Users/jdyer/Documents/GitHub/JD-Programming-examples/Python/math_slot_simulator/PARishSheets.xlsx'
         #button entries
         self.label_bet = tk.Label(self, text="Bet ")
-        self.label_bet.grid(row = 1, column = 0)
+        self.label_bet.grid(row = 1, column = 0, columnspan=2)
         #self.label_bet.pack( side = LEFT)
         self.bet_entry = ttk.Entry(self, width = 8, textvariable = self.bet)
-        self.bet_entry.grid(row = 1, column = 1)
+        self.bet_entry.grid(row = 1, column = 2)
         #self.bet_entry.insert(0,self.bet.get())
         #self.bet_entry.pack(padx = 15, pady = 15, side = RIGHT)
         self.label_cred = tk.Label(self, text="Starting Credits ")
-        self.label_cred.grid(row = 2, column = 0)
+        self.label_cred.grid(row = 2, column = 0, columnspan=2)
         #self.label_cred.pack( side = LEFT)
         self.credit_entry = ttk.Entry(self, width = 8, textvariable = self.initial_credits)
-        self.credit_entry.grid(row = 2, column = 1)
+        self.credit_entry.grid(row = 2, column = 2)
         #self.credit_entry.insert(0,self.initial_credits.get())
         #self.credit_entry.pack(padx = 15, pady = 15, side = RIGHT)
         # build slot button
         self.label_build_slot = tk.Label(self, text="1. Build Virtual Slot ")
-        self.label_build_slot.grid(row = 3, column = 0, columnspan = 2)
+        self.label_build_slot.grid(row = 3, column = 0)
         #self.label_build_slot.pack( side = LEFT)
-        self.run_slots_button = tk.Button(self, text="1. Build Virtual Slot", command = self.build_slot_button())
+        self.cb_chk = tk.Checkbutton(self, textvariable=self.cb_check, onvalue = 1)
+        self.cb_check_box.grid(row = 3, column = 1)
+        self.run_slots_button = tk.Button(self, text="1. Build Virtual Slot", command = self.build_slot_button)
         #self.run_slots_button['command'] = self.build_slot_button()
         self.run_slots_button.grid(row = 4, column = 2)
         #self.run_slots_button.pack()
         # simulator info
         self.label_simruns = tk.Label(self, text="Simulator Runs" )
-        self.label_simruns .grid(row = 5, column = 0)
+        self.label_simruns .grid(row = 5, column = 0, columnspan=2)
         #self.label_simruns.pack( side = LEFT)
         self.simrun_entry = ttk.Entry(self, width = 10, textvariable = self.simruns)
-        self.simrun_entry.grid(row = 5, column = 1)
+        self.simrun_entry.grid(row = 5, column = 2)
         #self.simrun_entry.insert(0,self.simruns.get())
         #self.simrun_entry.pack(padx = 15, pady = 15, side = RIGHT)
         # Run Button
         self.label_sim = tk.Label(self, text="2. Run Simulation")
         self.label_sim.grid(row = 6, column = 0, columnspan = 2)
-        self.run_sim_button = tk.Button(self, text="2. Run Simulation", command = self.sim_button_clicked())
+        self.run_sim_button = tk.Button(self, text="2. Run Simulation", command = self.sim_button_clicked)
         #self.run_sim_button['command'] = self.sim_button_clicked()        
         self.run_sim_button.grid(row = 6, column = 2)
+        ### debug buttons ### (run the win once and set the outcome)
+        ### set jackpot
+        ### set win
+        ### output ###
+        ## output file label
+        ## output file textbox entry
+        ## output file location-picker
+        ## plotting 
+        ## plot output, graph and display
 
 if __name__ == '__main__':
     """ main class: take input and call the simulator. """
