@@ -302,6 +302,7 @@ class Simulator():
         #plt.style.use('_mpl-gallery')
         plt.ylabel('Credits')
         plt.xlabel('Spins')
+        plt.xlim(-1,self.simnum) # show total expected spins. 
         plt.plot(self.spins, self.incremental_credits)
         plt.show()
 
@@ -309,6 +310,7 @@ class Gui(tk.Tk):
 
     def __init__(self):
         super().__init__()
+        self.debug_level = 0
         self.geometry("500x500")
         self.title("Slot Simulator")
         self.columnconfigure(0, weight = 1)
@@ -352,6 +354,7 @@ class Gui(tk.Tk):
         #print("buttonpress")
         if(self.slot_ready == True):
             sim = Simulator(self.sm, self.simruns.get())
+            self.slot_check.set("[Done - Rebuild Slot]")
         else:
             print("Slot needs to be loaded first.")
 
