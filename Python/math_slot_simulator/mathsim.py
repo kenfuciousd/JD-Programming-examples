@@ -12,6 +12,7 @@
 
 import sys
 import os
+import os.path
 import random
 import numpy as np        # random number generator, rounding
 import pandas as pd     # for reading Excel
@@ -21,14 +22,15 @@ import tkinter.ttk as ttk
 import tkinter.messagebox as messagebox
 from tkinter import *
 from tkinter import filedialog as fd
+from collections import defaultdict
 #import pygame
 
 ### slot machine class
 class SlotMachine: 
     """Slot machine class, takes in the 'input' file as well as the reel # configured """ 
     # initialize, setting allowances to settings:
-    def __init__(self,filepath, reels, paylines, bet, initial_credits):
-        self.filepath = filepath
+    def __init__(self, filepath, reels, paylines, bet, initial_credits):
+        self.input_filepath = filepath
         self.reels = reels
         self.paylines_total = paylines
         self.game_credits = initial_credits 
@@ -46,12 +48,12 @@ class SlotMachine:
         self.paylines = []
 
         try:
-            reel_data = pd.read_excel(filepath, sheet_name='Reels')
+            reel_data = pd.read_excel(self.input_filepath, sheet_name='Reels')
             self.reel1 = reel_data['Reel 1']
             self.reel2 = reel_data['Reel 2']
             self.reel3 = reel_data['Reel 3']
         except:
-            print(f"not a good filename: {filepath}")
+            print(f"not a good filename: {self.input_filepath}")
         # dataframe_var.shape to get dimensionality: (22,5)    .. so dataframe_var.shape[0] is the rows (depth) and [1] is the columns (width)
         ### the reels, here, are the reel strips. 
 
@@ -208,14 +210,9 @@ class SlotMachine:
             #test against paytable
             self.reset_wildsymbols()
             for payline in self.paytable:
-                #######  this is where it needs reworked ######
-                #print(".. against combo: " + str(payline) + " ...")
-                #from here: do the symbols for each reel spot match? so symbol[]
                 for reelnum in range(0, self.reels):
                     # reworking logic..
                     #print(" - testing reel: " + str(reelnum+1) + " for " + str(symbols[reelnum]) + " versus " + str(payline[reelnum]))
-                    # TODO: will need to add logic for "wilds" ***   ***   ***   ***   ***   ****\
-
                     if "*" in str(payline[reelnum]):
                         #print("Found an Any Type Symbol")
                         if payline[reelnum] == '*B':
@@ -249,22 +246,11 @@ class SlotMachine:
                     winbreak = 0
                     break
 
-    def debug_win_jackpot(self):
-        # only for testing, REMOVE BEFORE ANY PRODUCTION LEVEL TESTING
-        self.build_game_window(2, 2, 2)
-
-    # spin reels: 
+    # spin reels: a major part of the functionality 
     def spin_reels(self):
         #print("bet is " + str(self.bet) + " and paylines is " + str(self.paylines_total))
         total_bet = self.bet * float(self.paylines_total)
         #print("checking credits: " + self.game_credits + " < " + str(total_bet))
-        #### PROBABLY UNNECESSARY NOW, CHECK LATER #####
-        #if(float(self.game_credits) < total_bet):
-        #    # return "not enough credits!" or something and be done. -- needs a little work
-        #    print("Not enough credits, $" + str(total_bet) + " is required.")
-        #    #quit()  ###### This isn't right - it quits the whole program.  we just want it to stop the simulation..
-
-            #.. later: when we run out of credits, but want to test a total # of runs..  a cash injection? 
         #print("betting: " + str(total_bet*-1))
         self.adjust_credits(total_bet * -1)
         #STUB: remove wallet value: bet x paylines; check to see if player has enough
@@ -282,8 +268,9 @@ class Simulator():
         self.this_bet = sm.bet * float(sm.paylines_total)
         self.incremental_credits = []
         self.spins = []
+        self.df_dict = []
         self.run_sim()
-        self.plot_result()
+        #self.plot_result()   # the automatic plotting was causing issues with things hanging until it closed. 
 
     def run_sim(self):
         for iteration in range(self.simnum):
@@ -294,10 +281,15 @@ class Simulator():
                 print("Not enough credits, $" + str(self.this_bet) + " is required.")
                 break
             else:
+                # some of the busy parts of the simulator. spin the slotmachine(sm)'s reels and track the data
+                # choosing a dictionary for the df_dict var because it's easy to convert to a DataFrame later. 
                 self.sm.spin_reels()
                 self.incremental_credits.append(self.sm.return_credits())
                 self.spins.append(iteration)
-                print(f"spin {str(iteration)} and credits ${str(self.sm.return_credits())}")
+                self.df_dict.insert(iteration, self.sm.return_credits())
+                #print(f"spin {str(iteration)} and credits ${str(self.sm.return_credits())}")
+                print(f"spin {str(iteration)} and credits ${str(self.sm.return_credits())} and added to the dictionary: {self.df_dict[iteration]}")
+
     def plot_result(self):
         #plt.style.use('_mpl-gallery')
         plt.ylabel('Credits')
@@ -305,6 +297,10 @@ class Simulator():
         plt.xlim(-1,self.simnum) # show total expected spins. 
         plt.plot(self.spins, self.incremental_credits)
         plt.show()
+
+    def return_dataframe(self):
+        print(f" ... looking at {str(self.df_dict)}")
+        return pd.DataFrame(self.df_dict)
 
 class Gui(tk.Tk):
 
@@ -326,99 +322,183 @@ class Gui(tk.Tk):
         # .. simulator settings: 
         self.initial_credits = IntVar(self, value = 100)
         self.simruns = IntVar(self, value = 500)
-        self.filepath = StringVar(self, value = "./PARishSheets.xlsx")
-        self.slot_check = StringVar(self, value = "[Click 1. First]")
-        #print(f"{self.filepath.get()}")
+        self.input_filepath = StringVar(self, value = "./PARishSheets.xlsx") #isn't working as a default?
+        self.sim_output_filepath = StringVar(self, value = "./simdata.csv")
+        self.math_output_filepath = StringVar(self, value = "./mathdata.csv")
+        self.status_box = StringVar(self, value = "[Select Input File, then Click 1.]")
+        self.df = pd.DataFrame()
         self.create_gui()
         #self.mainloop()
 
-    def filepath_dialog_button(self): 
-        self.filepath = fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("excel files","*.xlsx"), ("all files","*.*")) )
+    #output buttons - decided to make them separate in case we want to do different things with them
+    def input_filepath_dialog_button(self): 
+        self.input_filepath = fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("excel files","*.xlsx"), ("all files","*.*")) )
+        #print(f"input is {self.input_filepath}")
+        self.input_file_entry.insert(0,self.input_filepath)
 
+    def sim_output_filepath_dialog_button(self): 
+        self.sim_output_filepath = fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("csv files","*.csv"), ("all files","*.*")) )
+        print(f"input is {self.sim_output_filepath}")       
+        self.sim_output_file_entry.insert(0,self.sim_output_filepath)
 
+    def math_output_filepath_dialog_button(self): 
+        self.math_output_filepath = fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("csv files","*.csv"), ("all files","*.*")) )
+        print(f"input is {self.math_output_filepath}")
+        self.math_output_file_entry.insert(0,self.math_output_filepath)
+
+    def sim_output_save_file(self):
+        #header = ['spin','credits']
+        data = self.df
+        print(data)
+        # if file does not exist, create first.. then append
+        print(self.sim_output_filepath.get())
+        if(os.path.exists(str(self.sim_output_filepath)) == False):
+            with open(str(self.sim_output_filepath.get()), 'w') as fp:
+                fp.close()
+        data.to_csv(str(self.sim_output_filepath.get()))
+        print(f"saving... {str(self.sim_output_filepath.get())}")
+
+    def math_output_save_file(self):
+        data = self.df
+        print(data)
+        # if file does not exist, create first.. then append
+        print(str(self.math_output_filepath.get()))
+        if(os.path.exists(str(self.math_output_filepath)) == False):
+            with open(str(self.math_output_filepath.get()), 'w') as fp:
+                fp.close()
+        data.to_csv(str(self.math_output_filepath.get()))
+        print(f"saving... {str(self.math_output_filepath.get())}")
+
+    #### This is where the magic happens in the GUI, part 1
     def build_slot_button(self):
         # use the current values
-        filepath = self.filepath  #this didnt like .get()
+        input_filepath = str(self.input_filepath) #this didnt like .get()
+        #print(f"input filepath clicked is: {input_filepath}")
         reel_total = self.reel_total.get()
         paylines_total = self.paylines_total.get()
         bet = float(self.bet_entry.get())
         initial_credits = self.credit_entry.get()
-       #print(f"{filepath}, {reel_total}, {paylines_total}, {bet}, {initial_credits}")
-        self.sm = SlotMachine(filepath, reel_total, paylines_total, bet, initial_credits)
+        #print(f"{filepath}, {reel_total}, {paylines_total}, {bet}, {initial_credits}")
+        self.sm = SlotMachine(input_filepath, reel_total, paylines_total, bet, initial_credits)
         self.slot_ready = True
-        self.slot_check.set("[Slot Built]")
+        self.status_box.set("[Slot Built - Credits Loaded]")
         # a gui checkbox to show it was done? in the build column in slot 0?
 
+    #### This is where the magic happens in the GUI, part 2
     def sim_button_clicked(self):
         #start simulation here...
         #print("buttonpress")
         if(self.slot_ready == True):
-            sim = Simulator(self.sm, self.simruns.get())
-            self.slot_check.set("[Done - Rebuild Slot]")
+            self.status_box.set("[Done - Click 1, Rebuild Slot]")            
+            self.sim = Simulator(self.sm, self.simruns.get())   ### why isn't this able to be touched? 
+            self.df = pd.DataFrame(self.sim.df_dict)
+            #print(f" So here is what is returned from the SIM: \n {str(self.df)}")
         else:
+            self.status_box.set("[Click 1 to Build or reload]")
             print("Slot needs to be loaded first.")
+
+    def plot_button_clicked(self):
+        self.sim.plot_result()
 
     def create_gui(self):
         # UI element values
-        #self.filepath = StringVar(self, value = '/Users/jdyer/Documents/GitHub/JD-Programming-examples/Python/math_slot_simulator/PARishSheets.xlsx')
-        self.label_filepath = tk.Label(self, text="Filepath ")
-        self.label_filepath.grid(row = 0, column = 0)
+        gui_row_iteration = 0
+        #self.input_filepath = StringVar(self, value = '/Users/jdyer/Documents/GitHub/JD-Programming-examples/Python/math_slot_simulator/PARishSheets.xlsx')
+        self.label_plot = tk.Label(self, text="1. Select Input File")
+        self.label_plot.grid(row = gui_row_iteration, column = 0, columnspan = 3)
+        gui_row_iteration += 1
+        self.input_label_filepath = tk.Label(self, text="Input Filepath ")
+        self.input_label_filepath.grid(row = gui_row_iteration, column = 0)
         #self.label_filepath.pack( side = LEFT)
-        self.file_entry = ttk.Entry(self, textvariable = self.filepath, text=self.filepath)
-        #self.file_entry.insert(0,self.filepath)
-        self.file_entry.grid(row = 0, column = 1)
-        #self.file_entry.pack(padx = 15, pady = 15, side = RIGHT)
-        self.file_button = tk.Button(self, text="...", command = self.filepath_dialog_button)
-        self.file_button['command'] = self.filepath_dialog_button()
-        self.file_button.grid(row = 0, column = 2)
-        #input file...
-        #filepath='/Users/jdyer/Documents/GitHub/JD-Programming-examples/Python/math_slot_simulator/PARishSheets.xlsx'
+        self.input_file_entry = ttk.Entry(self, textvariable = self.input_filepath, text=self.input_filepath)
+        #self.input_file_entry.insert(0,self.input_filepath)
+        self.input_file_entry.grid(row = gui_row_iteration, column = 1)
+        #self.input_file_entry.pack(padx = 15, pady = 15, side = RIGHT)
+        self.file_button = tk.Button(self, text="...", command = self.input_filepath_dialog_button)
+        self.file_button['command'] = self.input_filepath_dialog_button
+        self.file_button.grid(row = gui_row_iteration, column = 2)
+        gui_row_iteration += 1
         #button entries
         self.label_bet = tk.Label(self, text="Bet ")
-        self.label_bet.grid(row = 1, column = 0, columnspan=2)
-        #self.label_bet.pack( side = LEFT)
+        self.label_bet.grid(row = gui_row_iteration, column = 0, columnspan=2)
         self.bet_entry = ttk.Entry(self, width = 8, textvariable = self.bet)
-        self.bet_entry.grid(row = 1, column = 2)
-        #self.bet_entry.insert(0,self.bet.get())
-        #self.bet_entry.pack(padx = 15, pady = 15, side = RIGHT)
+        self.bet_entry.grid(row = gui_row_iteration, column = 2)
+        gui_row_iteration += 1
         self.label_cred = tk.Label(self, text="Starting Credits ")
-        self.label_cred.grid(row = 2, column = 0, columnspan=2)
-        #self.label_cred.pack( side = LEFT)
+        self.label_cred.grid(row = gui_row_iteration, column = 0, columnspan=2)
         self.credit_entry = ttk.Entry(self, width = 8, textvariable = self.initial_credits)
-        self.credit_entry.grid(row = 2, column = 2)
-        #self.credit_entry.insert(0,self.initial_credits.get())
-        #self.credit_entry.pack(padx = 15, pady = 15, side = RIGHT)
+        self.credit_entry.grid(row = gui_row_iteration, column = 2)
+        gui_row_iteration += 1
+
+        # the status box. intentionally making it a bit obnoxious to catch the eye and because I want to change how this works later. 
+        self.status_box_box = tk.Label(self, textvariable=self.status_box, bg = "dodgerblue1", fg = "ghostwhite")
+        self.status_box_box.grid(row = gui_row_iteration, column = 1)
+        gui_row_iteration += 1
+
         # build slot button
-        self.label_build_slot = tk.Label(self, text="1. Build Virtual Slot ")
-        self.label_build_slot.grid(row = 3, column = 0)
-        #self.label_build_slot.pack( side = LEFT)
-        self.slot_check_box = tk.Label(self, textvariable=self.slot_check)
-        self.slot_check_box.grid(row = 3, column = 1)
-        self.run_slots_button = tk.Button(self, text="1. Build Virtual Slot", command = self.build_slot_button)
-        #self.run_slots_button['command'] = self.build_slot_button()
-        self.run_slots_button.grid(row = 4, column = 2)
-        #self.run_slots_button.pack()
+        self.label_build_slot = tk.Label(self, text="2. Build Virtual Slot ")
+        self.label_build_slot.grid(row = gui_row_iteration, column = 0, columnspan = 3)
+        gui_row_iteration += 1
+        self.run_slots_button = tk.Button(self, text="2. Build Virtual Slot", command = self.build_slot_button)
+        self.run_slots_button.grid(row = gui_row_iteration, column = 1)
+        gui_row_iteration += 1
         # simulator info
         self.label_simruns = tk.Label(self, text="Simulator Total Spins" )
-        self.label_simruns .grid(row = 5, column = 0, columnspan=2)
-        #self.label_simruns.pack( side = LEFT)
+        self.label_simruns .grid(row = gui_row_iteration, column = 0, columnspan=2)
         self.simrun_entry = ttk.Entry(self, width = 10, textvariable = self.simruns)
-        self.simrun_entry.grid(row = 5, column = 2)
-        #self.simrun_entry.insert(0,self.simruns.get())
-        #self.simrun_entry.pack(padx = 15, pady = 15, side = RIGHT)
+        self.simrun_entry.grid(row = gui_row_iteration, column = 2)
+        gui_row_iteration += 1
+
         # Run Button
-        self.label_sim = tk.Label(self, text="2. Run Simulation")
-        self.label_sim.grid(row = 6, column = 0, columnspan = 2)
-        self.run_sim_button = tk.Button(self, text="2. Run Simulation", command = self.sim_button_clicked)
-        #self.run_sim_button['command'] = self.sim_button_clicked()        
-        self.run_sim_button.grid(row = 6, column = 2)
+        self.label_sim = tk.Label(self, text="3. Run Simulation")
+        self.label_sim.grid(row = gui_row_iteration, column = 0, columnspan = 3)
+        gui_row_iteration += 1
+        self.run_sim_button = tk.Button(self, text="3. Run Simulation", command = self.sim_button_clicked)       
+        self.run_sim_button.grid(row = gui_row_iteration, column = 1)
+        gui_row_iteration += 1
+
+        #sim label
+        self.label_output = tk.Label(self, text="4a. Save Outputs")
+        self.label_output.grid(row = gui_row_iteration, column = 0, columnspan = 3)
+        gui_row_iteration += 1
+        #Sim output file
+        self.sim_output_label_filepath = tk.Label(self, text="Sim Output Filepath ")
+        self.sim_output_label_filepath.grid(row = gui_row_iteration, column = 0)
+        self.sim_output_file_entry = ttk.Entry(self, textvariable = self.sim_output_filepath, text=self.sim_output_filepath)
+        self.sim_output_file_entry.grid(row = gui_row_iteration, column = 1)
+        self.sim_output_file_button = tk.Button(self, text="...", command = self.sim_output_filepath_dialog_button)
+        self.sim_output_file_button['command'] = self.sim_output_filepath_dialog_button
+        self.sim_output_file_button.grid(row = gui_row_iteration, column = 2)
+        gui_row_iteration += 1
+        self.sim_do_output_button = tk.Button(self, text="Save File", command = self.sim_output_save_file)   
+        self.sim_do_output_button.grid(row = gui_row_iteration, column = 2)
+        gui_row_iteration+= 1
+
+        # math output file
+        self.math_output_label_filepath = tk.Label(self, text="Math Output Filepath ")
+        self.math_output_label_filepath.grid(row = gui_row_iteration, column = 0)
+        self.math_output_file_entry = ttk.Entry(self, textvariable = self.math_output_filepath, text=self.math_output_filepath)
+        self.math_output_file_entry.grid(row = gui_row_iteration, column = 1)
+        self.math_output_file_button = tk.Button(self, text="...", command = self.math_output_filepath_dialog_button)
+        self.math_output_file_button['command'] = self.math_output_filepath_dialog_button
+        self.math_output_file_button.grid(row = gui_row_iteration, column = 2)
+        gui_row_iteration += 1
+        self.math_do_output_button = tk.Button(self, text="Save File", command = self.math_output_save_file)   
+        self.math_do_output_button.grid(row = gui_row_iteration, column = 2)
+        gui_row_iteration += 1
+
+        # Plot Button to show math
+        self.label_plot = tk.Label(self, text="4b. Plot Spins to Credits")
+        self.label_plot.grid(row = gui_row_iteration, column = 0, columnspan = 3)
+        gui_row_iteration += 1
+        self.run_plot_button = tk.Button(self, text="4b. Plot Spins to Credits", command = self.plot_button_clicked)       
+        self.run_plot_button.grid(row = gui_row_iteration, column = 1)
+        gui_row_iteration += 1
+
         ### debug buttons ### (run the win once and set the outcome)
         ### set jackpot
         ### set win
-        ### output ###
-        ## output file label
-        ## output file textbox entry
-        ## output file location-picker
+
         ## plotting 
         ## plot output, graph and display
 
