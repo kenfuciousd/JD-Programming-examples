@@ -8,7 +8,7 @@
 #        Paylines should have each payline with a parenthesis set of numbers, (reel,game-window-position), starting from zero. 
 #            like: (0,1) | (1,2) | (2,1) which would look like a downward pointing arrow shape from the second row - _ -
 # 
-# python packages installed: openpyxl, (vaex?)
+# python packages installed: openpyxl, tkinter
 
 import sys
 import os
@@ -31,8 +31,7 @@ class SlotMachine:
     # initialize, setting allowances to settings:
     def __init__(self, filepath, reels, paylines, bet, initial_credits):
         self.input_filepath = filepath
-        self.reels = reels
-        self.paylines_total = paylines
+        print(f"{self.input_filepath} .. was saved from {filepath}")
         self.game_credits = initial_credits 
         self.bet = bet
         #initialize data to be used in the local object namespace, so it's able to be referenced. 
@@ -47,8 +46,12 @@ class SlotMachine:
         self.wildsymbols = []
         self.paylines = []
 
+        # if there is a file at the spot, read it. ... this logic should probably be changed/added to the payline/paytable pieces..
         try:
             reel_data = pd.read_excel(self.input_filepath, sheet_name='Reels')
+            #we should set this around here... 
+            self.reels = reels
+            self.paylines_total = paylines            
             self.reel1 = reel_data['Reel 1']
             self.reel2 = reel_data['Reel 2']
             self.reel3 = reel_data['Reel 3']
@@ -56,12 +59,6 @@ class SlotMachine:
             print(f"not a good filename: {self.input_filepath}")
         # dataframe_var.shape to get dimensionality: (22,5)    .. so dataframe_var.shape[0] is the rows (depth) and [1] is the columns (width)
         ### the reels, here, are the reel strips. 
-
-        #if(reels==5):
-        #     reel4 = reel_data['Reel 4']
-        #    reel4pos=random.randint(0,len(reel4)-1)
-        #      reel5 = reel_data['Reel 5']    
-        #    reel5pos=random.randint(0,len(reel5)-1)
 
         # chooses the random positions for each of the reels, eventually add the total reel number to pass
         self.randomize_reels()
@@ -268,7 +265,7 @@ class Simulator():
         self.this_bet = sm.bet * float(sm.paylines_total)
         self.incremental_credits = []
         self.spins = []
-        self.df_dict = []
+        self.df_dict = ["credits"] # takes up the header line and lets us start at iteration 1 for data purposes
         self.run_sim()
         #self.plot_result()   # the automatic plotting was causing issues with things hanging until it closed. 
 
@@ -285,10 +282,10 @@ class Simulator():
                 # choosing a dictionary for the df_dict var because it's easy to convert to a DataFrame later. 
                 self.sm.spin_reels()
                 self.incremental_credits.append(self.sm.return_credits())
-                self.spins.append(iteration)
-                self.df_dict.insert(iteration, self.sm.return_credits())
-                #print(f"spin {str(iteration)} and credits ${str(self.sm.return_credits())}")
-                print(f"spin {str(iteration)} and credits ${str(self.sm.return_credits())} and added to the dictionary: {self.df_dict[iteration]}")
+                self.spins.append(iteration+1)
+                self.df_dict.insert(iteration+1, self.sm.return_credits())
+                print(f"spin {str(iteration+1)} and credits ${str(self.sm.return_credits())}")
+                #print(f"spin {str(iteration)} and credits ${str(self.sm.return_credits())} and added to the dictionary: {self.df_dict[iteration]}")
 
     def plot_result(self):
         #plt.style.use('_mpl-gallery')
@@ -298,60 +295,71 @@ class Simulator():
         plt.plot(self.spins, self.incremental_credits)
         plt.show()
 
-    def return_dataframe(self):
-        print(f" ... looking at {str(self.df_dict)}")
-        return pd.DataFrame(self.df_dict)
+    # this should be used, in some form.. I don't like addressing this directly. However 
+    #def return_dataframe(self):
+    #    print(f" ... looking at {str(self.df_dict)}")
+    #    return pd.DataFrame(self.df_dict)
 
-class Gui(tk.Tk):
+class tkGui(tk.Tk):
 
     def __init__(self):
-        super().__init__()
+        super().__init__()  #the super is a bit unnecessary, as there is nothing to inherit... but leaving it here for reference. 
         self.debug_level = 0
+        #initial gui settings and layout
         self.geometry("500x500")
         self.title("Slot Simulator")
         self.columnconfigure(0, weight = 1)
         self.columnconfigure(1, weight = 1)
         self.columnconfigure(2, weight = 1)
+
         # default text/value entries
-        self.reel_total = IntVar(self, value = 3)   #reels would be set here? 
-        #print(self.reel_total.get())
-        self.paylines_total = IntVar(self, value = 9) 
-        self.bet = StringVar(self, value = "0.25")  ## so I need to set this as a string in order to get a decimal.  it's... sigh. 
+        self.reel_total = IntVar(self, value = 3)   #reels would be set here? --- this should probably be done in the lot machine, after the read
+        self.paylines_total = IntVar(self, value = 9) # this should also be moved to within the slot machine
+        self.bet = StringVar(self, value = "0.25")  ## so I need to set this as a string in order to get a decimal.
         self.slot_ready = False
-        # so, initially, each total bet is 2.25
         # .. simulator settings: 
         self.initial_credits = IntVar(self, value = 100)
         self.simruns = IntVar(self, value = 500)
-        self.input_filepath = StringVar(self, value = "./PARishSheets.xlsx") #isn't working as a default?
+        self.input_filepath = StringVar(self, value = "./PARishSheets.xlsx") 
         self.sim_output_filepath = StringVar(self, value = "./simdata.csv")
         self.math_output_filepath = StringVar(self, value = "./mathdata.csv")
         self.status_box = StringVar(self, value = "[Select Input File, then Click 1.]")
+        #simulator spins/credits data
         self.df = pd.DataFrame()
+        #dictionary with math, next? 
+        #finally, create the gui itself, calling the function
         self.create_gui()
-        #self.mainloop()
 
     #output buttons - decided to make them separate in case we want to do different things with them
+    ##### currently broken.. when using .get() .. meaning it's breaking out of the text box string format...
     def input_filepath_dialog_button(self): 
-        self.input_filepath = fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("excel files","*.xlsx"), ("all files","*.*")) )
-        #print(f"input is {self.input_filepath}")
-        self.input_file_entry.insert(0,self.input_filepath)
+        #clear out the old entries, then reset. 
+        print(f"input was {self.input_filepath.get()}")  
+        self.input_filepath.set("")
+        self.input_file_entry.select_clear()     
+        # clearing out the variables, don't work 
+        the_input = fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("excel files","*.xlsx"), ("all files","*.*")) )
+        self.input_filepath.set(the_input)
+        print(f"input is {self.input_filepath.get()}")
+        self.input_file_entry.textvariable=self.input_filepath.get()
+        print(f"and the entry is {self.input_file_entry.get()}")
 
     def sim_output_filepath_dialog_button(self): 
-        self.sim_output_filepath = fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("csv files","*.csv"), ("all files","*.*")) )
-        print(f"input is {self.sim_output_filepath}")       
-        self.sim_output_file_entry.insert(0,self.sim_output_filepath)
+        self.sim_output_filepath.set(fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("csv files","*.csv"), ("all files","*.*")) ) )
+        #print(f"input is {self.sim_output_filepath}")       
+        self.sim_output_file_entry.textvariable=self.sim_output_filepath.get()
 
     def math_output_filepath_dialog_button(self): 
-        self.math_output_filepath = fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("csv files","*.csv"), ("all files","*.*")) )
-        print(f"input is {self.math_output_filepath}")
-        self.math_output_file_entry.insert(0,self.math_output_filepath)
+        self.math_output_filepath.set(fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("csv files","*.csv"), ("all files","*.*")) ) )
+        #print(f"input is {self.math_output_filepath}")
+        self.math_output_file_entry.textvariable=self.math_output_filepath.get()
 
     def sim_output_save_file(self):
         #header = ['spin','credits']
         data = self.df
-        print(data)
+        #print(data)
         # if file does not exist, create first.. then append
-        print(self.sim_output_filepath.get())
+        #print(self.sim_output_filepath.get())
         if(os.path.exists(str(self.sim_output_filepath)) == False):
             with open(str(self.sim_output_filepath.get()), 'w') as fp:
                 fp.close()
@@ -359,10 +367,10 @@ class Gui(tk.Tk):
         print(f"saving... {str(self.sim_output_filepath.get())}")
 
     def math_output_save_file(self):
-        data = self.df
-        print(data)
+        data = self.df #### this will be a different data set.....
+        #print(data)
         # if file does not exist, create first.. then append
-        print(str(self.math_output_filepath.get()))
+        #print(str(self.math_output_filepath.get()))
         if(os.path.exists(str(self.math_output_filepath)) == False):
             with open(str(self.math_output_filepath.get()), 'w') as fp:
                 fp.close()
@@ -372,16 +380,16 @@ class Gui(tk.Tk):
     #### This is where the magic happens in the GUI, part 1
     def build_slot_button(self):
         # use the current values
-        input_filepath = str(self.input_filepath) #this didnt like .get()
-        #print(f"input filepath clicked is: {input_filepath}")
+        input_filepath = self.input_filepath.get() #this didnt like .get()
+        print(f" after build slot, input filepath clicked is: {input_filepath}")
         reel_total = self.reel_total.get()
         paylines_total = self.paylines_total.get()
         bet = float(self.bet_entry.get())
         initial_credits = self.credit_entry.get()
         #print(f"{filepath}, {reel_total}, {paylines_total}, {bet}, {initial_credits}")
-        self.sm = SlotMachine(input_filepath, reel_total, paylines_total, bet, initial_credits)
+        self.sm = SlotMachine(input_filepath, reel_total, paylines_total, bet, initial_credits) ### TODO: get reels and paylines out of it. read within the filepath
         self.slot_ready = True
-        self.status_box.set("[Slot Built - Credits Loaded]")
+        self.status_box.set("[2. Slot Built - Credits Loaded]")
         # a gui checkbox to show it was done? in the build column in slot 0?
 
     #### This is where the magic happens in the GUI, part 2
@@ -389,13 +397,13 @@ class Gui(tk.Tk):
         #start simulation here...
         #print("buttonpress")
         if(self.slot_ready == True):
-            self.status_box.set("[Done - Click 1, Rebuild Slot]")            
+            self.status_box.set("[3. Done - Click 1 to Rebuild Slot]")            
             self.sim = Simulator(self.sm, self.simruns.get())   ### why isn't this able to be touched? 
             self.df = pd.DataFrame(self.sim.df_dict)
             #print(f" So here is what is returned from the SIM: \n {str(self.df)}")
         else:
-            self.status_box.set("[Click 1 to Build or reload]")
-            print("Slot needs to be loaded first.")
+            self.status_box.set("[->1. Click 1 to Build or reload]")
+            #print("->1. Slot needs to be loaded first.")
 
     def plot_button_clicked(self):
         self.sim.plot_result()
@@ -413,11 +421,11 @@ class Gui(tk.Tk):
         self.input_file_entry = ttk.Entry(self, textvariable = self.input_filepath, text=self.input_filepath)
         #self.input_file_entry.insert(0,self.input_filepath)
         self.input_file_entry.grid(row = gui_row_iteration, column = 1)
-        #self.input_file_entry.pack(padx = 15, pady = 15, side = RIGHT)
-        self.file_button = tk.Button(self, text="...", command = self.input_filepath_dialog_button)
+        self.file_button = tk.Button(self, text="1. ...", command = self.input_filepath_dialog_button)
         self.file_button['command'] = self.input_filepath_dialog_button
         self.file_button.grid(row = gui_row_iteration, column = 2)
         gui_row_iteration += 1
+        
         #button entries
         self.label_bet = tk.Label(self, text="Bet ")
         self.label_bet.grid(row = gui_row_iteration, column = 0, columnspan=2)
@@ -496,32 +504,29 @@ class Gui(tk.Tk):
         gui_row_iteration += 1
 
         ### debug buttons ### (run the win once and set the outcome)
+        ### reset credits button (separate from the 'build virtual slot'?)
         ### set jackpot
         ### set win
-
-        ## plotting 
-        ## plot output, graph and display
 
 if __name__ == '__main__':
     """ main class: take input and call the GUI, which contains the simulator. """
     # GUI call here - this handles everything else, since it's ui / button driven 
-    sim_gui = Gui()
+    sim_gui = tkGui()
     sim_gui.mainloop()
 
+
+    #### this is how it was originally called before the UI
     #settings; from file load or UI, later. 
     #reel_total = 3
     #paylines_total = 9
-
     # UI Values 
     #bet = 0.25
     # so, initially, each total bet is 2.25
     # .. simulator settings: 
     #initial_credits = 1000
     #simruns = 10
-
     # set the filepath - this is to be moved to the configuration file / ui input later.  literally the worst way to do this atm: 
     #filepath='/Users/jdyer/Documents/GitHub/JD-Programming-examples/Python/math_slot_simulator/PARishSheets.xlsx'
-
     # build slot machine with the filepath
 #    sm = SlotMachine(filepath, reel_total, paylines_total, bet, initial_credits)
     # start the simulator using the slot machine. 
