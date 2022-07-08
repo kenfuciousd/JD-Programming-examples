@@ -31,7 +31,7 @@ class SlotMachine:
     # initialize, setting allowances to settings:
     def __init__(self, filepath, bet, initial_credits):
         self.input_filepath = filepath
-        print(f"{self.input_filepath} .. was saved from {filepath}")
+        #print(f"{self.input_filepath} .. was saved from {filepath}")
         self.game_credits = initial_credits 
         self.bet = bet
         #initialize data to be used in the local object namespace, so it's able to be referenced. 
@@ -78,6 +78,7 @@ class SlotMachine:
                 self.reels = 4
                 self.reel4pos = 0
             #else.. it's 3 reels. 
+            self.reels = 3
             self.reel3 = self.reel_data['Reel 3']
             self.reel3pos=0
             self.reel2 = self.reel_data['Reel 2']
@@ -335,6 +336,7 @@ class SlotMachine:
                             for sym in ['B7','R7']:
                                 self.wildsymbols.append(sym)
                             #print(" - appended 7s")
+                       # other wild symbols would go here. 
 
                     # win logic                     ### NOTE: Winning logic is *HERE* 
                     if((symbols[reelnum] == payline[reelnum]) or (symbols[reelnum] in self.wildsymbols)):
