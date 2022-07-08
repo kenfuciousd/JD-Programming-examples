@@ -29,7 +29,7 @@ from collections import defaultdict
 class SlotMachine: 
     """Slot machine class, takes in the 'input' file as well as the reel # configured """ 
     # initialize, setting allowances to settings:
-    def __init__(self, filepath, bet, initial_credits):
+    def __init__(self, filepath, reels, paylines, bet, initial_credits):
         self.input_filepath = filepath
         print(f"{self.input_filepath} .. was saved from {filepath}")
         self.game_credits = initial_credits 
@@ -37,68 +37,65 @@ class SlotMachine:
         #initialize data to be used in the local object namespace, so it's able to be referenced. 
         self.game_window = []
         self.paytable = []
-        self.reels = []
+        self.reel1pos=0    # to edit from here into reel function
+        self.reel2pos=0
+        self.reel3pos=0
+        self.reel1=[]
+        self.reel2=[]
+        self.reel3=[]
         self.wildsymbols = []
         self.paylines = []
-        self.paylines_total = 9 # arbitrary value to be set later... (how?)
 
+        # if there is a file at the spot, read it. ... this logic should probably be changed/added to the payline/paytable pieces..
+        try:
+            reel_data = pd.read_excel(self.input_filepath, sheet_name='Reels')
+            #we should set this around here... 
+            self.reels = reels
+            self.paylines_total = paylines            
+            self.reel1 = reel_data['Reel 1']
+            self.reel2 = reel_data['Reel 2']
+            self.reel3 = reel_data['Reel 3']
+        except:
+            print(f"not a good filename: {self.input_filepath}")
+        # dataframe_var.shape to get dimensionality: (22,5)    .. so dataframe_var.shape[0] is the rows (depth) and [1] is the columns (width)
         ### the reels, here, are the reel strips. 
-        self.build_reels()
+
         # chooses the random positions for each of the reels, eventually add the total reel number to pass
         self.randomize_reels()
 
         # load paytables
+        paytable_data = pd.read_excel(self.input_filepath, sheet_name='Paytable3')
         # this is where we will call the paytable loader with the data
         self.build_paylines()
 
         # load reel window, paylines 
+        payline_data = pd.read_excel(self.input_filepath, sheet_name='Paylines9')
         self.build_pay_table()
 
-        self.build_game_window()
-
+        if(reels == 3):
+            #print("in initialize: three reels")
+            # create virtual window:    (making up unused symbols to track values for deveopment) - also, setting the initial array depth to avoid index errors
+            self.game_window = [['gh1', 'gh4', 'gh7'], ['gh2', 'gh5', 'gh8'], ['gh3', 'gh6', 'gh9']]
+            # meaning it's called like game_window[reel][row]
+            self.build_game_window(self.reel1pos, self.reel2pos, self.reel3pos)
+        elif(reels == 5):
+            self.game_window = [['gh1', 'gh6', 'gh11', 'gh16', 'gh21'], ['gh2', 'gh7', 'gh12', 'gh17', 'gh22'], ['gh3', 'gh8', 'gh13', 'gh18', 'gh23'], ['gh4', 'gh9', 'gh14', 'gh19', 'gh24'], ['gh5', 'gh10', 'gh15', 'gh20', 'gh25']]
+            #build_game_window(reel_pos_all)
+        else:
+            #output logging goes here. 
+            print("Check settings. Choose 3 or 5 reels.")
+            quit()
         #end initialization
-
-    def build_reels(self):
-        # v2 reel building, initialize for 5, build as many as needed. 
-        self.reel1 = []
-        self.reel2 = []
-        self.reel3 = [] 
-        self.reel4 = []
-        self.reel5 = []
-
-        try:
-            ## this will be referenced by the reels anytime we need to check for columns
-            self.reel_data = pd.read_excel(self.input_filepath, sheet_name='Reels')
-            #we should set this around here... 
-            if("Reel 5" in self.reel_data): # if the data contains 'reel'
-                self.reel5 = self.reel_data['Reel 5']
-                self.reels = 5
-                self.reel5pos = 0
-            if("Reel 4" in self.reel_data):
-                self.reels = 4
-                self.reel4pos = 0
-            #else.. it's 3 reels. 
-            self.reel3 = self.reel_data['Reel 3']
-            self.reel3pos=0
-            self.reel2 = self.reel_data['Reel 2']
-            self.reel2pos=0
-            self.reel1 = self.reel_data['Reel 1']
-            self.reel1pos=0    # to edit from here into reel functionality
-        except:
-            print(f"not a good filename: {self.input_filepath}")
-        # dataframe_var.shape to get dimensionality: (22,5)    .. so dataframe_var.shape[0] is the rows (depth) and [1] is the columns (width)
-
-        # if there is a file at the spot, read it. ... this logic should probably be changed/added to the payline/paytable pieces..
 
     def randomize_reels(self):
         #print("before randomize: " + str(self.reel1pos) + " " + str(self.reel2pos) + " " + str(self.reel3pos))
         self.reel1pos=random.randint(0,len(self.reel1)-1)
         self.reel2pos=random.randint(0,len(self.reel2)-1)
         self.reel3pos=random.randint(0,len(self.reel3)-1)
-        if("Reel 4" in self.reel_data):
-            self.reel2pos=random.randint(0,len(self.reel4)-1)
-        if("Reel 5" in self.reel_data):            
-            self.reel2pos=random.randint(0,len(self.reel5)-1)
+        # need to add 5 reel logic to the game window stuff later... going to leave this here as a reminder
+        #if(reels==5):
+        #    reelpos4=random.randint(0,len(reel4)-1)
+        #    reelpos5=random.randint(0,len(reel5)-1)
         #print("after randomization, reel positions: " + str(self.reel1pos) + " " + str(self.reel2pos) + " " + str(self.reel3pos))
 
     def adjust_credits(self,value):
@@ -116,138 +113,43 @@ class SlotMachine:
         #print("resetting wildsymbols: " + str(self.wildsymbols))
 
     # note will need to change these inputs, to allow for >3
-    def build_game_window(self):
+    def build_game_window(self, reel1pos, reel2pos, reel3pos):
         #for now: 3 reels, more logic later - like sending a list of the positions, so it's size agnostic. 
         #     sets the window positions (reminder, game_window[row][reel])
         #if reel1 pos == 0 (or reel's 2 or three), then set (game_window[reel][0]) as reelN[len(reel1)-1)
         # else use reelN[reelposN-1]
-        if("Reel 5" in self.reel_data):  
-            # instantiating generic window
-            self.game_window = [['gh1', 'gh6', 'gh11', 'gh16', 'gh21'], ['gh2', 'gh7', 'gh12', 'gh17', 'gh22'], ['gh3', 'gh8', 'gh13', 'gh18', 'gh23'], ['gh4', 'gh9', 'gh14', 'gh19', 'gh24'], ['gh5', 'gh10', 'gh15', 'gh20', 'gh25']]
-            #print(str(reel1pos) + " " + str(reel2pos) + " " + str(reel3pos) + " " + str(len(self.reel1)-1) + " " + str(self.reel1[len(self.reel1)-1]))
-            if(self.reel1pos==0):
-                self.game_window[0][0]=self.reel1[len(self.reel1)-1]
-            else:
-                self.game_window[0][0]=self.reel1[self.reel1pos-1]
-            if(self.reel2pos==0):
-                self.game_window[1][0]=self.reel2[len(self.reel2)-1]
-            else:
-                self.game_window[1][0]=self.reel2[self.reel2pos-1]
-            if(self.reel3pos==0):
-                self.game_window[2][0]=self.reel3[len(self.reel3)-1]
-            else:
-                self.game_window[2][0]=self.reel3[self.reel3pos-1]             
-            if(self.reel4pos==0):
-                self.game_window[3][0]=self.reel4[len(self.reel4)-1]
-            else:
-                self.game_window[3][0]=self.reel4[self.reel4pos-1]  
-            if(self.reel5pos==0):
-                self.game_window[4][0]=self.reel5[len(self.reel5)-1]
-            else:
-                self.game_window[4][0]=self.reel5[self.reel5pos-1]  
-            #the middle row is always true
-            self.game_window[0][1] = self.reel1[self.reel1pos]
-            self.game_window[1][1] = self.reel2[self.reel2pos]
-            self.game_window[2][1] = self.reel3[self.reel3pos]
-            self.game_window[3][1] = self.reel4[self.reel4pos]
-            self.game_window[4][1] = self.reel5[self.reel5pos]
-            #if self.reel1 pos == len(self.reel1)-1 (or self.reel's 2 or three), then set (self.game_window[self.reel][2]) as self.reelN[0]
-            # else use self.reelN[self.reelposN+1]
-            if(self.reel1pos==len(self.reel1)-1):
-                self.game_window[0][2]=self.reel1[0]
-            else:
-                self.game_window[0][2]=self.reel1[self.reel1pos+1] 
-            if(self.reel2pos==len(self.reel2)-1):
-                self.game_window[1][2]=self.reel2[0]
-            else:
-                self.game_window[1][2]=self.reel2[self.reel2pos+1] 
-            if(self.reel3pos==len(self.reel3)-1):
-                self.game_window[2][2]=self.reel3[0]
-            else:
-                self.game_window[2][2]=self.reel3[self.reel3pos+1]
-            ##handling for reels 4 and 5 could be here, when configured. If reels==5, do the same thing as above for all three positions, but for 5x5
-
-        elif("Reel 4" in self.reel_data):
-            self.game_window = [['gh1', 'gh6', 'gh11', 'gh16'], ['gh2', 'gh7', 'gh12', 'gh17'], ['gh3', 'gh8', 'gh13', 'gh18'], ['gh4', 'gh9', 'gh14', 'gh19'], ['gh5', 'gh10', 'gh15', 'gh20']]
-            #print(str(reel1pos) + " " + str(reel2pos) + " " + str(reel3pos) + " " + str(len(self.reel1)-1) + " " + str(self.reel1[len(self.reel1)-1]))
-            if(self.reel1pos==0):
-                self.game_window[0][0]=self.reel1[len(self.reel1)-1]
-            else:
-                self.game_window[0][0]=self.reel1[self.reel1pos-1]
-            if(self.reel2pos==0):
-                self.game_window[1][0]=self.reel2[len(self.reel2)-1]
-            else:
-                self.game_window[1][0]=self.reel2[self.reel2pos-1]
-            if(self.reel3pos==0):
-                self.game_window[2][0]=self.reel3[len(self.reel3)-1]
-            else:
-                self.game_window[2][0]=self.reel3[self.reel3pos-1]             
-            if(self.reel4pos==0):
-                self.game_window[3][0]=self.reel4[len(self.reel4)-1]
-            else:
-                self.game_window[3][0]=self.reel4[self.reel4pos-1]             
-            #the middle row is always true
-            self.game_window[0][1] = self.reel1[self.reel1pos]
-            self.game_window[1][1] = self.reel2[self.reel2pos]
-            self.game_window[2][1] = self.reel3[self.reel3pos]
-            self.game_window[3][1] = self.reel3[self.reel3pos]
-            #if self.reel1 pos == len(self.reel1)-1 (or self.reel's 2 or three), then set (self.game_window[self.reel][2]) as self.reelN[0]
-            # else use self.reelN[self.reelposN+1]
-            if(self.reel1pos==len(self.reel1)-1):
-                self.game_window[0][2]=self.reel1[0]
-            else:
-                self.game_window[0][2]=self.reel1[self.reel1pos+1] 
-            if(self.reel2pos==len(self.reel2)-1):
-                self.game_window[1][2]=self.reel2[0]
-            else:
-                self.game_window[1][2]=self.reel2[self.reel2pos+1] 
-            if(self.reel3pos==len(self.reel3)-1):
-                self.game_window[2][2]=self.reel3[0]
-            else:
-                self.game_window[2][2]=self.reel3[self.reel3pos+1]
-            if(self.reel4pos==len(self.reel4)-1):
-                self.game_window[2][3]=self.reel4[0]
-            else:
-                self.game_window[2][3]=self.reel4[self.reel4pos+1]
-            ##handling for reels 4 and 5 could be here, when configured. If reels==5, do the same thing as above for all three positions, but for 5x5
-
-        elif("Reel 3" in self.reel_data):
-            self.game_window = [['gh1', 'gh4', 'gh7'], ['gh2', 'gh5', 'gh8'], ['gh3', 'gh6', 'gh9']]
-            #print(str(reel1pos) + " " + str(reel2pos) + " " + str(reel3pos) + " " + str(len(self.reel1)-1) + " " + str(self.reel1[len(self.reel1)-1]))
-            if(self.reel1pos==0):
-                self.game_window[0][0]=self.reel1[len(self.reel1)-1]
-            else:
-                self.game_window[0][0]=self.reel1[self.reel1pos-1]
-            if(self.reel2pos==0):
-                self.game_window[1][0]=self.reel2[len(self.reel2)-1]
-            else:
-                self.game_window[1][0]=self.reel2[self.reel2pos-1]
-            if(self.reel3pos==0):
-                self.game_window[2][0]=self.reel3[len(self.reel3)-1]
-            else:
-                self.game_window[2][0]=self.reel3[self.reel3pos-1]             
-            #the middle row is always true
-            self.game_window[0][1] = self.reel1[self.reel1pos]
-            self.game_window[1][1] = self.reel2[self.reel2pos]
-            self.game_window[2][1] = self.reel3[self.reel3pos]
-            #if self.reel1 pos == len(self.reel1)-1 (or self.reel's 2 or three), then set (self.game_window[self.reel][2]) as self.reelN[0]
-            # else use self.reelN[self.reelposN+1]
-            if(self.reel1pos==len(self.reel1)-1):
-                self.game_window[0][2]=self.reel1[0]
-            else:
-                self.game_window[0][2]=self.reel1[self.reel1pos+1] 
-            if(self.reel2pos==len(self.reel2)-1):
-                self.game_window[1][2]=self.reel2[0]
-            else:
-                self.game_window[1][2]=self.reel2[self.reel2pos+1] 
-            if(self.reel3pos==len(self.reel3)-1):
-                self.game_window[2][2]=self.reel3[0]
-            else:
-                self.game_window[2][2]=self.reel3[self.reel3pos+1]
+        #print(str(reel1pos) + " " + str(reel2pos) + " " + str(reel3pos) + " " + str(len(self.reel1)-1) + " " + str(self.reel1[len(self.reel1)-1]))
+        if(self.reel1pos==0):
+            self.game_window[0][0]=self.reel1[len(self.reel1)-1]
         else:
-            #output logging goes here. 
-            print("Check settings. Choose 3, 4, or 5 reels.")
-            quit()
+            self.game_window[0][0]=self.reel1[self.reel1pos-1]
+        if(self.reel2pos==0):
+            self.game_window[1][0]=self.reel2[len(self.reel2)-1]
+        else:
+            self.game_window[1][0]=self.reel2[self.reel2pos-1]
+        if(self.reel3pos==0):
+            self.game_window[2][0]=self.reel3[len(self.reel3)-1]
+        else:
+            self.game_window[2][0]=self.reel3[self.reel3pos-1]             
+        #the middle row is always true
+        self.game_window[0][1] = self.reel1[self.reel1pos]
+        self.game_window[1][1] = self.reel2[self.reel2pos]
+        self.game_window[2][1] = self.reel3[self.reel3pos]
+        #if self.reel1 pos == len(self.reel1)-1 (or self.reel's 2 or three), then set (self.game_window[self.reel][2]) as self.reelN[0]
+        # else use self.reelN[self.reelposN+1]
+        if(self.reel1pos==len(self.reel1)-1):
+            self.game_window[0][2]=self.reel1[0]
+        else:
+            self.game_window[0][2]=self.reel1[self.reel1pos+1] 
+        if(self.reel2pos==len(self.reel2)-1):
+            self.game_window[1][2]=self.reel2[0]
+        else:
+            self.game_window[1][2]=self.reel2[self.reel2pos+1] 
+        if(self.reel3pos==len(self.reel3)-1):
+            self.game_window[2][2]=self.reel3[0]
+        else:
+            self.game_window[2][2]=self.reel3[self.reel3pos+1]
+        ##handling for reels 4 and 5 could be here, when configured. If reels==5, do the same thing as above for all three positions, but for 5x5
         #print(self.game_window)
 
     def build_pay_table(self):
@@ -255,8 +157,6 @@ class SlotMachine:
         #accessible in object with:  paytable[each_win_line from 0 to len-1][0 to len-1 for each symbol and the value]
         ##
         #### last value should be credits, to multiply vs the bet.. not dollar values
-        self.paytable_data = pd.read_excel(self.input_filepath, sheet_name='Paytable3')
-
         self.paytable = [
             ('W','W','W',12.5),
             ('B7','B7','B7',11.25),
@@ -287,9 +187,6 @@ class SlotMachine:
         # this is what should be loaded from the excel sheet later
         #referenced by paylines[full-payline][payline-item-number][either 0 for reel, or 1 for position]
         #so paylines[0][2] is the third reel position to check at game_window[2][0], [2]reel three, [0]top position.
-#        self.paylines
-        self.payline_data = pd.read_excel(self.input_filepath, sheet_name='Paylines9')
-
         self.paylines=[
             [(0,0),(1,0),(2,0)],
             [(0,1),(1,1),(2,1)],
@@ -303,11 +200,12 @@ class SlotMachine:
         ]
 
     # call win determination (send each specified payline's values to check against the paytable, #operations are paylines times paytable rows)
-    def is_a_win(self):
-        #check payline from the reels, sending over the gamewindow array
-        # this should cycle the payline list, (each line pulling the 3 to 5 coordinates) 
+        # did they win? 
+        # this should cycle the payline list, (each line pulling the 3 coordinates) 
         # then testing each of those against each paytable line
         # ... with special consideration for wilds, denoted *
+    def is_a_win(self):
+        #check payline from the reels, sending over the gamewindow array
         # so..  for each payline, grab the symbols from the game window compare to the whole paytable win list 
         #if it matches one of those lines (wild logic here), then pull the len-1 entry for that line
         iteration = 0
@@ -367,7 +265,7 @@ class SlotMachine:
         #STUB: remove wallet value: bet x paylines; check to see if player has enough
         #randomly choose reel positions for each of the reels
         self.randomize_reels()
-        self.build_game_window()
+        self.build_game_window(self.reel1pos, self.reel2pos, self.reel3pos)
         self.is_a_win()
 
 
@@ -427,8 +325,8 @@ class tkGui(tk.Tk):
         self.columnconfigure(2, weight = 1)
 
         # default text/value entries
-        #self.reel_total = IntVar(self, value = 3)   #reels would be set here? --- this should probably be done in the slot machine, after the read
-        #self.paylines_total = IntVar(self, value = 9) # this should also be moved to within the slot machine
+        self.reel_total = IntVar(self, value = 3)   #reels would be set here? --- this should probably be done in the lot machine, after the read
+        self.paylines_total = IntVar(self, value = 9) # this should also be moved to within the slot machine
         self.bet = StringVar(self, value = "0.25")  ## so I need to set this as a string in order to get a decimal.
         self.slot_ready = False
         # .. simulator settings: 
@@ -438,10 +336,10 @@ class tkGui(tk.Tk):
         self.sim_output_filepath = StringVar(self, value = "./simdata.csv")
         self.math_output_filepath = StringVar(self, value = "./mathdata.csv")
         self.status_box = StringVar(self, value = "[Select Input File, then Click 1.]")
-        # simulator spins/credits data
+        #simulator spins/credits data
         self.df = pd.DataFrame()
-        # dictionary with math, next? 
-        # finally, create the gui itself, calling the function
+        #dictionary with math, next? 
+        #finally, create the gui itself, calling the function
         self.create_gui()
 
     #output buttons - decided to make them separate in case we want to do different things with them
@@ -496,10 +394,12 @@ class tkGui(tk.Tk):
         # use the current values
         input_filepath = self.input_filepath.get() #this didnt like .get()
         #print(f" after build slot, input filepath clicked is: {input_filepath}")
+        reel_total = self.reel_total.get()
+        paylines_total = self.paylines_total.get()
         bet = float(self.bet_entry.get())
         initial_credits = self.credit_entry.get()
         #print(f"{filepath}, {reel_total}, {paylines_total}, {bet}, {initial_credits}")
-        self.sm = SlotMachine(input_filepath, bet, initial_credits) ### TODO: get reels and paylines out of it. read within the filepath
+        self.sm = SlotMachine(input_filepath, reel_total, paylines_total, bet, initial_credits) ### TODO: get reels and paylines out of it. read within the filepath
         self.slot_ready = True
         self.status_box.set("[2. Slot Built - Credits Loaded]")
         # a gui checkbox to show it was done? in the build column in slot 0?
