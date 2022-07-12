@@ -29,9 +29,8 @@ from collections import defaultdict
 class SlotMachine: 
     """Slot machine class, takes in the 'input' file as well as the reel # configured """ 
     # initialize, setting allowances to settings:
-    def __init__(self, filepath, bet, initial_credits):
+    def __init__(self, filepath, bet, initial_credits, debug_level):
         self.input_filepath = filepath
-        #print(f"{self.input_filepath} .. was saved from {filepath}")
         self.game_credits = initial_credits 
         self.bet = bet
         #initialize data to be used in the local object namespace, so it's able to be referenced. 
@@ -40,23 +39,61 @@ class SlotMachine:
         self.reels = []
         self.wildsymbols = []
         self.paylines = []
-        self.paylines_total = 9 # arbitrary value to be set later... (how?)
+        self.paylines_total = 9 # 3x3 default value to be set later... in the paylines
+        self.debug_level = debug_level
+        # the math section.
+        self.hit_frequency = 0
+        self.maximum_liability = 0
+        self.volitility = float(0)
+        self.mean_pay = 0
+
+        if(self.debug_level >= 2):
+            print(f"{self.input_filepath} .. was saved from {filepath}")
 
         ### the reels, here, are the reel strips. 
         self.build_reels()
         # chooses the random positions for each of the reels, eventually add the total reel number to pass
         self.randomize_reels()
-
-        # load paytables
-        # this is where we will call the paytable loader with the data
+        #build paylines: read in file, store a paylines list to reference elsewhere - this is the map of how it checks for wins against the game window
         self.build_paylines()
-
-        # load reel window, paylines 
+        # paytable next, the reel lenghts are needed for math, along with the paylines  
         self.build_pay_table()
-
+        #finally, build the 'game window'.. a 2 tier array/list where the symbols get set from the reels each spin, and what is checked against by the paylines
         self.build_game_window()
-
         #end initialization
+
+    def build_paylines(self):
+        #first payline: middle line; the 'reel positions'
+        #paylines=[(0,1),(1,1),(2,1)]
+
+        # this is what should be loaded from the excel sheet later
+        #referenced by paylines[full-payline][payline-item-number][either 0 for reel, or 1 for position]
+        #so paylines[0][2] is the third reel position to check at game_window[2][0], [2]reel three, [0]top position.
+        #self.paylines
+        self.payline_data = pd.read_excel(self.input_filepath, sheet_name='Paylines9')
+
+        self.paylines = []
+        for idx, row in self.payline_data.iterrows():
+            # for each row
+            temprow = [] 
+            for i in range(0, self.payline_data.shape[1]):
+                temprow.append(row[i])
+            if(self.debug_level >= 2):
+                print(f"         **** the payline being added is: {temprow}")
+            self.paylines.append(temprow)
+
+        # to note: default here is for 3x3.  This determines our game window sizing. 
+        #self.paylines=[
+        #    [(0,0),(1,0),(2,0)],
+        #    [(0,1),(1,1),(2,1)],
+        #    [(0,2),(1,2),(2,2)],
+        #    [(0,0),(1,1),(2,2)],
+        #    [(0,2),(1,1),(2,0)],
+        #    [(0,0),(1,1),(2,0)],
+        #    [(0,1),(1,2),(2,1)],
+        #    [(0,1),(1,0),(2,1)],
+        #    [(0,2),(1,1),(2,2)]
+        #]
 
     def build_reels(self):
         # v2 reel building, initialize for 5, build as many as needed. 
@@ -65,7 +102,6 @@ class SlotMachine:
         self.reel3 = [] 
         self.reel4 = []
         self.reel5 = []
-
         try:
             ## this will be referenced by the reels anytime we need to check for columns
             self.reel_data = pd.read_excel(self.input_filepath, sheet_name='Reels')
@@ -75,38 +111,44 @@ class SlotMachine:
                 self.reels = 5
                 self.reel5pos = 0
             if("Reel 4" in self.reel_data):
+                self.reel4 = self.reel_data['Reel 4 ']
                 self.reels = 4
                 self.reel4pos = 0
             #else.. it's 3 reels. 
-            self.reels = 3
+            else: 
+                self.reels = 3
             self.reel3 = self.reel_data['Reel 3']
-            self.reel3pos=0
+            self.reel3pos = 0
             self.reel2 = self.reel_data['Reel 2']
-            self.reel2pos=0
+            self.reel2pos = 0
             self.reel1 = self.reel_data['Reel 1']
-            self.reel1pos=0    # to edit from here into reel functionality
+            self.reel1pos = 0    
         except:
-            print(f"not a good filename: {self.input_filepath}")
+            print(f" !! Not a good filename: {self.input_filepath} !!")
         # dataframe_var.shape to get dimensionality: (22,5)    .. so dataframe_var.shape[0] is the rows (depth) and [1] is the columns (width)
 
         # if there is a file at the spot, read it. ... this logic should probably be changed/added to the payline/paytable pieces..
 
     def randomize_reels(self):
-        #print("before randomize: " + str(self.reel1pos) + " " + str(self.reel2pos) + " " + str(self.reel3pos))
+        if(self.debug_level >= 2):
+            print(f"        before randomize: {str(self.reel1pos)} {str(self.reel2pos)} {str(self.reel3pos)} " )
         self.reel1pos=random.randint(0,len(self.reel1)-1)
         self.reel2pos=random.randint(0,len(self.reel2)-1)
         self.reel3pos=random.randint(0,len(self.reel3)-1)
         if("Reel 4" in self.reel_data):
-            self.reel2pos=random.randint(0,len(self.reel4)-1)
+            self.reel4pos=random.randint(0,len(self.reel4)-1)
         if("Reel 5" in self.reel_data):            
-            self.reel2pos=random.randint(0,len(self.reel5)-1)
-        #print("after randomization, reel positions: " + str(self.reel1pos) + " " + str(self.reel2pos) + " " + str(self.reel3pos))
+            self.reel5pos=random.randint(0,len(self.reel5)-1)
+        if(self.debug_level >= 2):
+            print(f"        after randomization, reel positions: {str(self.reel1pos)}, {str(self.reel2pos)}, {str(self.reel3pos)} ")
 
     def adjust_credits(self,value):
-         # bets should be negative values, wins or deposits positive
-        #print("Adjusting credits at " + str(value))
+        # bets should be negative values, wins or deposits positive
+        if(self.debug_level >= 2):
+            print("Adjusting credits at " + str(value))
         self.game_credits = np.round(float(self.game_credits) + value, 2)
-        #print("Adjusting credits, now: " + str(self.game_credits))
+        if(self.debug_level >= 1):
+            print("Adjusted credits, now: " + str(self.game_credits))
 
     def return_credits(self):
          return self.game_credits
@@ -114,7 +156,8 @@ class SlotMachine:
     def reset_wildsymbols(self):
         """this function is used to reset the wildsymbols list, to assist the 'is_a_win' function, so that "any bars" or "any 7s", etc, don't get 'stuck' in the test """
         self.wildsymbols = ['W']
-        #print("resetting wildsymbols: " + str(self.wildsymbols))
+        #if(self.debug_level >= 3):
+            #print("resetting wildsymbols: " + str(self.wildsymbols))
 
     # note will need to change these inputs, to allow for >3
     def build_game_window(self):
@@ -122,10 +165,12 @@ class SlotMachine:
         #     sets the window positions (reminder, game_window[row][reel])
         #if reel1 pos == 0 (or reel's 2 or three), then set (game_window[reel][0]) as reelN[len(reel1)-1)
         # else use reelN[reelposN-1]
+        ##### 5 Reels have two configs: 5x3 and 5x5.  ... this is for 5x5..  but how do we tell the difference? is it in the paytables? becuase that basically defines that data...: 
         if("Reel 5" in self.reel_data):  
             # instantiating generic window
             self.game_window = [['gh1', 'gh6', 'gh11', 'gh16', 'gh21'], ['gh2', 'gh7', 'gh12', 'gh17', 'gh22'], ['gh3', 'gh8', 'gh13', 'gh18', 'gh23'], ['gh4', 'gh9', 'gh14', 'gh19', 'gh24'], ['gh5', 'gh10', 'gh15', 'gh20', 'gh25']]
-            #print(str(reel1pos) + " " + str(reel2pos) + " " + str(reel3pos) + " " + str(len(self.reel1)-1) + " " + str(self.reel1[len(self.reel1)-1]))
+            if(self.debug_level >= 1):
+                print(str(reel1pos) + " " + str(reel2pos) + " " + str(reel3pos) + " " + str(len(self.reel1)-1) + " " + str(self.reel1[len(self.reel1)-1]))
             if(self.reel1pos==0):
                 self.game_window[0][0]=self.reel1[len(self.reel1)-1]
             else:
@@ -167,9 +212,9 @@ class SlotMachine:
             else:
                 self.game_window[2][2]=self.reel3[self.reel3pos+1]
             ##handling for reels 4 and 5 could be here, when configured. If reels==5, do the same thing as above for all three positions, but for 5x5
-
+            print(f"    ****    Found 5 reels, not yet implemented")
         elif("Reel 4" in self.reel_data):
-            self.game_window = [['gh1', 'gh6', 'gh11', 'gh16'], ['gh2', 'gh7', 'gh12', 'gh17'], ['gh3', 'gh8', 'gh13', 'gh18'], ['gh4', 'gh9', 'gh14', 'gh19'], ['gh5', 'gh10', 'gh15', 'gh20']]
+            self.game_window = [['gh1', 'gh5', 'gh9'], ['gh2', 'gh6', 'gh10'], ['gh3', 'gh8', 'gh11'], ['gh4', 'gh8', 'gh12']]
             #print(str(reel1pos) + " " + str(reel2pos) + " " + str(reel3pos) + " " + str(len(self.reel1)-1) + " " + str(self.reel1[len(self.reel1)-1]))
             if(self.reel1pos==0):
                 self.game_window[0][0]=self.reel1[len(self.reel1)-1]
@@ -211,10 +256,11 @@ class SlotMachine:
             else:
                 self.game_window[2][3]=self.reel4[self.reel4pos+1]
             ##handling for reels 4 and 5 could be here, when configured. If reels==5, do the same thing as above for all three positions, but for 5x5
-
+            print(f"    ****    Found 4 reels, not yet implemented")
         elif("Reel 3" in self.reel_data):
             self.game_window = [['gh1', 'gh4', 'gh7'], ['gh2', 'gh5', 'gh8'], ['gh3', 'gh6', 'gh9']]
-            #print(str(reel1pos) + " " + str(reel2pos) + " " + str(reel3pos) + " " + str(len(self.reel1)-1) + " " + str(self.reel1[len(self.reel1)-1]))
+            #if(self.debug_level >= 1):
+                #print(f"    {str(self.reel1pos)} + {str(self.reel2pos)} + {str(self.reel3pos)} + {str(len(self.reel1)-1)} + {str(self.reel1[len(self.reel1)-1])} ")
             if(self.reel1pos==0):
                 self.game_window[0][0]=self.reel1[len(self.reel1)-1]
             else:
@@ -247,9 +293,10 @@ class SlotMachine:
                 self.game_window[2][2]=self.reel3[self.reel3pos+1]
         else:
             #output logging goes here. 
-            print("Check settings. Choose 3, 4, or 5 reels.")
+            print("Check settings. Choose Reel +1 and Reel 2 and Reel 3, + Reel 4, + Reel 5 as labels for the reel columns.")
             quit()
-        #print(self.game_window)
+        if(self.debug_level >= 3):
+            print(self.game_window)
 
     def build_pay_table(self):
         #to replace with loading it in...  so in excel, 4 columns, reelNum text fields followed by the win amount
@@ -257,17 +304,53 @@ class SlotMachine:
         ##
         #### last value should be credits, to multiply vs the bet.. not dollar values
         self.paytable_data = pd.read_excel(self.input_filepath, sheet_name='Paytable3')
+        self.paytable = []
+        self.mean_pay = 0
+        for idx, row in self.paytable_data.iterrows():
+            # for each row
+            temprow = [] 
+            for i in range(0, self.paytable_data.shape[1]):
+                temprow.append(row[i])
+            self.paytable.append(temprow)
 
-        self.paytable = [
-            ('W','W','W',12.5),
-            ('B7','B7','B7',11.25),
-            ('R7','R7','R7',10.75),
-            ('*7','*7','*7',10),
-            ('3B','3B','3B',6.50),
-            ('2B','2B','2B',6),
-            ('1B','1B','1B',5.5),
-            ('*B','*B','*B',3)
-        ]
+        if(self.debug_level >= 2):
+            print(f"        Paytable: {self.paytable}")
+
+        # Paytable Math begins here. 
+        deviation = 0
+        hit_probability = 0
+        variance = 0
+        total_combinations = 0
+        # step 1. mean pay
+        for line in self.paytable:
+            self.mean_pay += line[len(line)-1]
+        self.mean_pay = self.mean_pay / len(self.paytable)
+        if(self.debug_level >= 2):
+            print(f"    Paytable Mean Pay is {self.mean_pay}")
+        #second pass, once we have the mean pay, do a bunch of math. 
+        total_combinations = len(self.reel1) * len(self.reel2) * len(self.reel3)
+        if(self.reels >= 4):
+            total_combinations *= len(self.reel4)
+        if(self.reels == 5):
+            self.total_combinations *= len(self.reel5)
+        if(self.debug_level >= 2):
+            print(f"        Total Combinations: {total_combinations}")        
+
+        # deviation, hit probability(woof), and variance. 
+        for line in self.paytable:
+            deviation = line[len(line)-1] - self.mean_pay
+            
+
+        #self.paytable = [
+        #    ('W','W','W',12.5),
+        #    ('B7','B7','B7',11.25),
+        #    ('R7','R7','R7',10.75),
+        #    ('*7','*7','*7',10),
+        #    ('3B','3B','3B',6.50),
+        #    ('2B','2B','2B',6),
+        #    ('1B','1B','1B',5.5),
+        #    ('*B','*B','*B',3)
+        #]
         #self.paytable = [
         #    ('W','W','W',25),
         #    ('B7','B7','B7',23),
@@ -281,28 +364,6 @@ class SlotMachine:
         # determine baseline wilds, which will always apply when encounterd
         self.wildsymbols = ['W']
 
-    def build_paylines(self):
-        #first payline: middle line; the 'reel positions'
-        #paylines=[(0,1),(1,1),(2,1)]
-
-        # this is what should be loaded from the excel sheet later
-        #referenced by paylines[full-payline][payline-item-number][either 0 for reel, or 1 for position]
-        #so paylines[0][2] is the third reel position to check at game_window[2][0], [2]reel three, [0]top position.
-#        self.paylines
-        self.payline_data = pd.read_excel(self.input_filepath, sheet_name='Paylines9')
-
-        self.paylines=[
-            [(0,0),(1,0),(2,0)],
-            [(0,1),(1,1),(2,1)],
-            [(0,2),(1,2),(2,2)],
-            [(0,0),(1,1),(2,2)],
-            [(0,2),(1,1),(2,0)],
-            [(0,0),(1,1),(2,0)],
-            [(0,1),(1,2),(2,1)],
-            [(0,1),(1,0),(2,1)],
-            [(0,2),(1,1),(2,2)]
-        ]
-
     # call win determination (send each specified payline's values to check against the paytable, #operations are paylines times paytable rows)
     def is_a_win(self):
         #check payline from the reels, sending over the gamewindow array
@@ -312,41 +373,57 @@ class SlotMachine:
         # so..  for each payline, grab the symbols from the game window compare to the whole paytable win list 
         #if it matches one of those lines (wild logic here), then pull the len-1 entry for that line
         iteration = 0
+        total_win = 0
         for line in self.paylines:
             symbols=[]
             winbreak = 0
             iteration += 1
+            if(self.debug_level >= 1):
+                print(f"    **** debug: in win line checking, line {line}")
             for reel_pos in line:
-                symbols.append(self.game_window[reel_pos[0]][reel_pos[1]])
-            print(f"    testing payline {iteration} with symbols: {str(symbols)}")  # this is pulling game window correctly
+                if(self.debug_level >= 2):
+                    print(f"        **** debug: reel pos: {int(reel_pos[0])}")
+                symbols.append(self.game_window[int(reel_pos[0])][int(reel_pos[2])])
+            if(self.debug_level >= 1):
+                print(f"    testing payline {iteration} with symbols: {str(symbols)}")  # this is pulling game window correctly
             #test against paytable
             self.reset_wildsymbols()
             for payline in self.paytable:
                 for reelnum in range(0, self.reels):
                     # reworking logic..
-                    #print(" - testing reel: " + str(reelnum+1) + " for " + str(symbols[reelnum]) + " versus " + str(payline[reelnum]))
+                    if(self.debug_level >= 3):
+                        print("             - testing reel: " + str(reelnum+1) + " for " + str(symbols[reelnum]) + " versus " + str(payline[reelnum]))
                     if "*" in str(payline[reelnum]):
                         #print("Found an Any Type Symbol")
                         if payline[reelnum] == '*B':
                             for sym in ['B7', '1B','2B', '3B']:
                             # eventually, logic to include the right ones from the reel.
                                 self.wildsymbols.append(sym)
-                            #print(" - appended Bars")
+                            #if(self.debug_level >= 3):
+                                #print("            - appended Bars to wild symbols")
                         elif payline[reelnum] == '*7':
                             for sym in ['B7','R7']:
                                 self.wildsymbols.append(sym)
-                            #print(" - appended 7s")
+                            #if(self.debug_level >= 3):
+                                #print("            - appended 7s to wild symbols")
+                        else: 
+                            # any symbol.. for 4 and 5 reels to ignore specific spots (allowing different length win lines)
+                            self.wildsymbols.append('*')
                        # other wild symbols would go here. 
 
                     # win logic                     ### NOTE: Winning logic is *HERE* 
                     if((symbols[reelnum] == payline[reelnum]) or (symbols[reelnum] in self.wildsymbols)):
                         #if they do not match at any time, return false 
-                        print("        Match: " + symbols[reelnum]  + " vs " + payline[reelnum] + " on reelnum: " + str(reelnum+1)) # + " and testing reels: " + str(self.reels))
+                        if(self.debug_level >= 1):
+                            print("        Match: " + symbols[reelnum]  + " vs " + payline[reelnum] + " on reelnum: " + str(reelnum+1)) # + " and testing reels: " + str(self.reels))
                         #payout is the last entry on the payline
                         if(reelnum + 1 == self.reels):
                             self.reset_wildsymbols()
-                            print("WIN! winning: " + str(payline[len(payline)-1]) + " credits, and the payline: " + str(symbols))
-                            self.adjust_credits(payline[len(payline)-1])  ### this should use credits, so bet value x the payline amount
+                            self.hit_frequency += 1
+                            total_win += payline[len(payline)-1] * self.bet 
+                            if(self.debug_level >= 1):
+                                print(f"    WIN! winning: {str(payline[len(payline)-1])} credits, meaning ${total_win} and the payline: {str(symbols)}")
+                            self.adjust_credits( payline[len(payline)-1] * self.bet)  ### this should use credits, so bet value x the payline amount
                             winbreak = 1
                             #return True
                     else:
@@ -358,13 +435,24 @@ class SlotMachine:
                 if(winbreak == 1):
                     winbreak = 0
                     break
+        # end of the payline checking, any totaling happens here. 
+        if(self.debug_level >= 2):
+            print(f"        maximum_liability is {self.maximum_liability} and this total win was {total_win}")
+        if(total_win > self.maximum_liability):
+            if(self.debug_level >= 1):
+                print(f"    New Maximum liability: {total_win}")
+            self.maximum_liability = total_win
+
 
     # spin reels: a major part of the functionality 
     def spin_reels(self):
-        #print("bet is " + str(self.bet) + " and paylines is " + str(self.paylines_total))
+        if(self.debug_level >= 3):
+            print("            bet is " + str(self.bet) + " and paylines is " + str(self.paylines_total))
         total_bet = self.bet * float(self.paylines_total)
-        #print("checking credits: " + self.game_credits + " < " + str(total_bet))
-        #print("betting: " + str(total_bet*-1))
+        if(self.debug_level >= 3):
+            print(f"            checking credits: {self.game_credits}  <  {str(total_bet)}")
+        if(self.debug_level >= 3):
+            print("            betting: " + str(total_bet*-1))
         self.adjust_credits(total_bet * -1)
         #STUB: remove wallet value: bet x paylines; check to see if player has enough
         #randomly choose reel positions for each of the reels
@@ -375,13 +463,14 @@ class SlotMachine:
 
 class Simulator():
     """ simulator class: takes in the SlotMachine class object, does stuff and tracks it. """
-    def __init__(self, sm, simnum):
+    def __init__(self, sm, simnum, debug_level):
         self.simnum = simnum
         self.sm = sm
         self.this_bet = sm.bet * float(sm.paylines_total)
         self.incremental_credits = []
         self.spins = []
         self.df_dict = ["credits"] # takes up the header line and lets us start at iteration 1 for data purposes
+        self.debug_level = debug_level
         self.run_sim()
         #self.plot_result()   # the automatic plotting was causing issues with things hanging until it closed. 
 
@@ -391,7 +480,7 @@ class Simulator():
             if( self.this_bet > float(self.sm.game_credits) ):
                 # can't really send back a status to the gui?? 
                 #simgui.slot_check.set("[Reset Slot]")
-                print("Not enough credits, $" + str(self.this_bet) + " is required.")
+                print("!!!! Not enough credits, $" + str(self.this_bet) + " is required.")
                 break
             else:
                 # some of the busy parts of the simulator. spin the slotmachine(sm)'s reels and track the data
@@ -401,7 +490,8 @@ class Simulator():
                 self.incremental_credits.append(self.sm.return_credits())
                 self.spins.append(iteration+1)
                 self.df_dict.insert(iteration+1, self.sm.return_credits())
-                #print(f"spin {str(iteration)} and credits ${str(self.sm.return_credits())} and added to the dictionary: {self.df_dict[iteration]}")
+                if(self.debug_level >= 3):
+                    print(f"    spin {str(iteration)} and credits ${str(self.sm.return_credits())} and added to the dictionary: {self.df_dict[iteration]}")
 
     def plot_result(self):
         #plt.style.use('_mpl-gallery')
@@ -422,15 +512,13 @@ class tkGui(tk.Tk):
         super().__init__()  #the super is a bit unnecessary, as there is nothing to inherit... but leaving it here for reference. 
         self.debug_level = 0
         #initial gui settings and layout
-        self.geometry("500x500")
+        self.geometry("500x600")
         self.title("Slot Simulator")
         self.columnconfigure(0, weight = 1)
         self.columnconfigure(1, weight = 1)
         self.columnconfigure(2, weight = 1)
 
         # default text/value entries
-        #self.reel_total = IntVar(self, value = 3)   #reels would be set here? --- this should probably be done in the slot machine, after the read
-        #self.paylines_total = IntVar(self, value = 9) # this should also be moved to within the slot machine
         self.bet = StringVar(self, value = "0.25")  ## so I need to set this as a string in order to get a decimal.
         self.slot_ready = False
         # .. simulator settings: 
@@ -442,32 +530,42 @@ class tkGui(tk.Tk):
         self.status_box = StringVar(self, value = "[Select Input File, then Click 1.]")
         # simulator spins/credits data
         self.df = pd.DataFrame()
+        # debug level, a gui element to decide if we want extra output. 
+        self.debug_level = IntVar(self, value = 0)
         # dictionary with math, next? 
-        # finally, create the gui itself, calling the function
+        self.hit_freq = IntVar(self, value = 0)
+        self.max_liability = IntVar(self, value = 0)        
+        self.volitility = DoubleVar(self, value = 0)
+        # finally for init, create the gui itself, calling the function
         self.create_gui()
 
     #output buttons - decided to make them separate in case we want to do different things with them
     ##### currently broken.. when using .get() .. meaning it's breaking out of the text box string format...
     def input_filepath_dialog_button(self): 
         #clear out the old entries, then reset. 
-        print(f"input was {self.input_filepath.get()}")  
+        if(self.debug_level >= 1):
+            print(f"    input was {self.input_filepath.get()}")  
         self.input_filepath.set("")
         self.input_file_entry.select_clear()     
         # clearing out the variables, don't work 
         the_input = fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("excel files","*.xlsx"), ("all files","*.*")) )
         self.input_filepath.set(the_input)
-        print(f"input is {self.input_filepath.get()}")
+        if(self.debug_level >= 2):
+            print(f"        input is {self.input_filepath.get()}")
         self.input_file_entry.textvariable=self.input_filepath.get()
-        print(f"and the entry is {self.input_file_entry.get()}")
+        if(self.debug_level >= 3):
+            print(f"            and the entry is {self.input_file_entry.get()}")
 
     def sim_output_filepath_dialog_button(self): 
         self.sim_output_filepath.set(fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("csv files","*.csv"), ("all files","*.*")) ) )
-        #print(f"input is {self.sim_output_filepath}")       
+        if(self.debug_level >= 1):
+            print(f"    ouput filepath is {self.sim_output_filepath}")       
         self.sim_output_file_entry.textvariable=self.sim_output_filepath.get()
 
     def math_output_filepath_dialog_button(self): 
         self.math_output_filepath.set(fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("csv files","*.csv"), ("all files","*.*")) ) )
-        #print(f"input is {self.math_output_filepath}")
+        if(self.debug_level >= 1):
+            print(f"    math output file is {self.math_output_filepath}")
         self.math_output_file_entry.textvariable=self.math_output_filepath.get()
 
     def sim_output_save_file(self):
@@ -480,7 +578,8 @@ class tkGui(tk.Tk):
             with open(str(self.sim_output_filepath.get()), 'w') as fp:
                 fp.close()
         data.to_csv(str(self.sim_output_filepath.get()))
-        print(f"saving... {str(self.sim_output_filepath.get())}")
+        if(self.debug_level >= 1):
+            print(f"    Sim Output Saving... {str(self.sim_output_filepath.get())}")
 
     def math_output_save_file(self):
         data = self.df #### this will be a different data set.....
@@ -491,7 +590,8 @@ class tkGui(tk.Tk):
             with open(str(self.math_output_filepath.get()), 'w') as fp:
                 fp.close()
         data.to_csv(str(self.math_output_filepath.get()))
-        print(f"saving... {str(self.math_output_filepath.get())}")
+        if(self.debug_level >= 1):
+            print(f"    Math Output File Saving... {str(self.math_output_filepath.get())}")
 
     #### This is where the magic happens in the GUI, part 1
     def build_slot_button(self):
@@ -500,8 +600,9 @@ class tkGui(tk.Tk):
         #print(f" after build slot, input filepath clicked is: {input_filepath}")
         bet = float(self.bet_entry.get())
         initial_credits = self.credit_entry.get()
-        #print(f"{filepath}, {reel_total}, {paylines_total}, {bet}, {initial_credits}")
-        self.sm = SlotMachine(input_filepath, bet, initial_credits) ### TODO: get reels and paylines out of it. read within the filepath
+        if(self.debug_level.get() >= 3):
+            print(f"            Slot Machine geting passed: {input_filepath}, {bet}, {initial_credits}, {self.debug_level.get()}")
+        self.sm = SlotMachine(input_filepath, bet, initial_credits, self.debug_level.get()) ### TODO: get reels and paylines out of it. read within the filepath
         self.slot_ready = True
         self.status_box.set("[2. Slot Built - Credits Loaded]")
         # a gui checkbox to show it was done? in the build column in slot 0?
@@ -511,10 +612,21 @@ class tkGui(tk.Tk):
         #start simulation here...
         #print("buttonpress")
         if(self.slot_ready == True):
-            self.status_box.set("[3. Done - Click 1 to Rebuild Slot]")            
-            self.sim = Simulator(self.sm, self.simruns.get())   ### why isn't this able to be touched? 
+            self.status_box.set("[3. Done - Click 2 to Rebuild Slot]")            
+            self.sim = Simulator(self.sm, self.simruns.get(), self.debug_level.get())   ### why isn't this able to be touched? 
             self.df = pd.DataFrame(self.sim.df_dict)
             #print(f" So here is what is returned from the SIM: \n {str(self.df)}")
+            print(f"Final values, at spin {self.sim.spins[len(self.sim.spins)-1]}, the final credit value was {self.sim.incremental_credits[len(self.sim.incremental_credits)-1]}" )
+            ######math goes here for output
+            ##########  #####  ######
+            if(self.debug_level.get() >= 1):
+                print(f"        hit info for math: {self.sm.hit_frequency} and {self.simruns.get()}")
+            hfe = ( self.sm.hit_frequency / self.simruns.get() ) # * 100   #### is this needed? it's used in the templates file... 
+            self.hit_freq.set(hfe)
+            ml = self.sm.maximum_liability
+            self.max_liability.set(ml)
+
+            #### volatility goes here. ### 
         else:
             self.status_box.set("[->1. Click 1 to Build or reload]")
             #print("->1. Slot needs to be loaded first.")
@@ -540,7 +652,12 @@ class tkGui(tk.Tk):
         self.file_button.grid(row = gui_row_iteration, column = 2)
         gui_row_iteration += 1
         
-        #button entries
+        #simulator settings entries
+        self.label_debug = tk.Label(self, text="Debug Level (0-3) ")
+        self.label_debug.grid(row = gui_row_iteration, column = 0, columnspan=2)
+        self.debug_entry = ttk.Entry(self, width = 8, textvariable = self.debug_level)
+        self.debug_entry.grid(row = gui_row_iteration, column = 2)
+        gui_row_iteration += 1
         self.label_bet = tk.Label(self, text="Bet ")
         self.label_bet.grid(row = gui_row_iteration, column = 0, columnspan=2)
         self.bet_entry = ttk.Entry(self, width = 8, textvariable = self.bet)
@@ -597,17 +714,17 @@ class tkGui(tk.Tk):
         gui_row_iteration+= 1
 
         # math output file
-        self.math_output_label_filepath = tk.Label(self, text="Math Output Filepath ")
-        self.math_output_label_filepath.grid(row = gui_row_iteration, column = 0)
-        self.math_output_file_entry = ttk.Entry(self, textvariable = self.math_output_filepath, text=self.math_output_filepath)
-        self.math_output_file_entry.grid(row = gui_row_iteration, column = 1)
-        self.math_output_file_button = tk.Button(self, text="...", command = self.math_output_filepath_dialog_button)
-        self.math_output_file_button['command'] = self.math_output_filepath_dialog_button
-        self.math_output_file_button.grid(row = gui_row_iteration, column = 2)
-        gui_row_iteration += 1
-        self.math_do_output_button = tk.Button(self, text="Save File", command = self.math_output_save_file)   
-        self.math_do_output_button.grid(row = gui_row_iteration, column = 2)
-        gui_row_iteration += 1
+        #self.math_output_label_filepath = tk.Label(self, text="Math Output Filepath ")
+        #self.math_output_label_filepath.grid(row = gui_row_iteration, column = 0)
+        #self.math_output_file_entry = ttk.Entry(self, textvariable = self.math_output_filepath, text=self.math_output_filepath)
+        #self.math_output_file_entry.grid(row = gui_row_iteration, column = 1)
+        #self.math_output_file_button = tk.Button(self, text="...", command = self.math_output_filepath_dialog_button)
+        #self.math_output_file_button['command'] = self.math_output_filepath_dialog_button
+        #self.math_output_file_button.grid(row = gui_row_iteration, column = 2)
+        #gui_row_iteration += 1
+        #self.math_do_output_button = tk.Button(self, text="Save File", command = self.math_output_save_file)   
+        #self.math_do_output_button.grid(row = gui_row_iteration, column = 2)
+        #gui_row_iteration += 1
 
         # Plot Button to show math
         self.label_plot = tk.Label(self, text="4b. Plot Spins to Credits")
@@ -617,8 +734,26 @@ class tkGui(tk.Tk):
         self.run_plot_button.grid(row = gui_row_iteration, column = 1)
         gui_row_iteration += 1
 
-        ### debug buttons ### (run the win once and set the outcome)
         ### reset credits button (separate from the 'build virtual slot'?)
+        ### math output area
+        # Hit frequency (hits / spins)
+        self.label_hit_freq = tk.Label(self, text="Hit Frequency  ")
+        self.label_hit_freq.grid(row = gui_row_iteration, column = 0, columnspan=2)
+        self.hit_freq_entry = ttk.Entry(self, width = 8, textvariable = self.hit_freq)
+        self.hit_freq_entry.grid(row = gui_row_iteration, column = 2)
+        gui_row_iteration += 1
+        # Max Liability (biggest win)
+        self.label_max_liability = tk.Label(self, text="Max Liability  ")
+        self.label_max_liability.grid(row = gui_row_iteration, column = 0, columnspan=2)
+        self.max_liability_entry = ttk.Entry(self, width = 8, textvariable = self.max_liability)
+        self.max_liability_entry.grid(row = gui_row_iteration, column = 2)
+        gui_row_iteration += 1
+        # Volitility  (see documentation, it's complex...  volitility  = square root of: (  ( ( sum(win values - mean pay) ) ^^ 2 ) / total spins  )
+        self.label_volitility = tk.Label(self, text="Volitility  ")
+        self.label_volitility.grid(row = gui_row_iteration, column = 0, columnspan=2)
+        self.volitility_entry = ttk.Entry(self, width = 8, textvariable = self.volitility)
+        self.volitility_entry.grid(row = gui_row_iteration, column = 2)
+        gui_row_iteration += 1
         ### set jackpot
         ### set win
 
