@@ -31,5 +31,5 @@ paylines_baseline=[
 #print(paylines_baseline)
 
 # this is it: payline[payline_row][payline entry][reel=0,position=1]
-print(f"{paylines[0][2][1]}")
+print(f"{paylines[0][2][0]}")
 ###
