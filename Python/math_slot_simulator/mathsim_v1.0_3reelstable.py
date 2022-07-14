@@ -24,11 +24,10 @@ import tkinter.messagebox as messagebox
 from tkinter import *
 from tkinter import filedialog as fd
 from collections import defaultdict
-#import pygame
 
-### slot machine class
+### slot machine class - meant to keep persistant data on its own state and 'spin reels' to give outcomes
 class SlotMachine: 
-    """Slot machine class, takes in the 'input' file as well as the reel # configured """ 
+    """Slot machine class, takes in the 'input' file, and a number of gui elements """ 
     # initialize, setting allowances to settings:
     def __init__(self, filepath, bet, initial_credits, debug_level, infinite_checked):
         self.input_filepath = filepath
@@ -53,6 +52,7 @@ class SlotMachine:
         self.volitility = float(0)
         self.mean_pay = 0
         self.summation = 0
+        self.this_win = 0    # value to be returned for tracking
         self.total_won = 0
         self.total_bet = 0
         # debug announcement; the place for initial conditions to get checked or set.
@@ -119,16 +119,18 @@ class SlotMachine:
 
         ## this will be referenced by the reels anytime we need to check for columns
         self.reel_data = pd.read_excel(self.input_filepath, sheet_name=self.reels_sheetname)
-        #we should set this around here... 
+        # we should do some testing about the reel data being good data.. but python will just complain either way
+
         if("Reel 5" in self.reel_data): # if the data contains 'reel'
             self.reel5 = self.reel_data['Reel 5']
             self.reels = 5
             self.reel5pos = 0
+            print(f"{self.reel5}")
         if("Reel 4" in self.reel_data):
             self.reel4 = self.reel_data['Reel 4']
             self.reels = 4
             self.reel4pos = 0
-            #print(f"{self.reel4}")
+            print(f"{self.reel4}")
         #else.. it's 3 reels. 
         else: 
             self.reels = 3
@@ -150,14 +152,14 @@ class SlotMachine:
         self.reel1pos=random.randint(0,len(self.reel1)-1)
         self.reel2pos=random.randint(0,len(self.reel2)-1)
         self.reel3pos=random.randint(0,len(self.reel3)-1)
-        if("Reel 4" in self.reel_data):
-            self.reel4pos=random.randint(0,len(self.reel4)-1)
-            if(self.debug_level >= 1):
-                print(f"        after randomization, reel positions: {str(self.reel1pos)}, {str(self.reel2pos)}, {str(self.reel3pos)}, {str(self.reel4pos)} ")
         if("Reel 5" in self.reel_data):            
             self.reel5pos=random.randint(0,len(self.reel5)-1)
             if(self.debug_level >= 1):
-                print(f"        after randomization, reel positions: {str(self.reel1pos)}, {str(self.reel2pos)}, {str(self.reel3pos)}, {str(self.reel4pos)}, {str(self.reel5pos)} ")        
+                print(f"        after randomization, reel positions: {str(self.reel1pos)}, {str(self.reel2pos)}, {str(self.reel3pos)}, {str(self.reel4pos)}, {str(self.reel5pos)} ")
+        elif("Reel 4" in self.reel_data):
+            self.reel4pos=random.randint(0,len(self.reel4)-1)
+            if(self.debug_level >= 1):
+                print(f"        after randomization, reel positions: {str(self.reel1pos)}, {str(self.reel2pos)}, {str(self.reel3pos)}, {str(self.reel4pos)} ")
         else:
             if(self.debug_level >= 1):
                 print(f"        after randomization, reel positions: {str(self.reel1pos)}, {str(self.reel2pos)}, {str(self.reel3pos)} ")
@@ -405,11 +407,12 @@ class SlotMachine:
         #if it matches one of those lines (wild logic here), then pull the len-1 entry for that line
         iteration = 0
         total_win = 0
+        self.this_win = 0
         for line in self.paylines:
             symbols=[]
             winbreak = 0
             iteration += 1
-            if(self.debug_level >= 1):
+            if(self.debug_level >= 2):
                 print(f"    **** debug: in win line checking, line {line}")
             for reel_pos in line:
                 if(self.debug_level >= 2):
@@ -446,13 +449,13 @@ class SlotMachine:
                     if((symbols[reelnum] == winline[reelnum]) or (symbols[reelnum] in self.wildsymbols)):
                         #if they do not match at any time, return false 
                         if(self.debug_level >= 1):
-                            print("        Match: " + symbols[reelnum]  + " vs " + winline[reelnum] + " on reelnum: " + str(reelnum+1)) # + " and testing reels: " + str(self.reels))
+                            print("        Match symbol " + symbols[reelnum]  + " against the paytable symbol " + winline[reelnum] + " on reelnum: " + str(reelnum+1)) # + " and testing reels: " + str(self.reels))
                         #payout is the last entry on the winline
                         if(reelnum + 1 == self.reels):
                             self.reset_wildsymbols()
                             # this is where the hit_total is added, should go off for each winline found 
                             self.hit_total += 1
-                            if(self.debug_level >= 1):
+                            if(self.debug_level >= 2):
                                 print(f"    +=+=+=+= summation is currently {self.summation} and about to add {(self.mean_pay - (winline[len(winline)-1] ) ) ** 2}")
                             self.summation += (self.mean_pay - (winline[len(winline)-1] ) ) ** 2     ##* self.bet) ) ** 2
 
@@ -461,7 +464,7 @@ class SlotMachine:
                                 print(f"    !!!! WIN! awarding {str(winline[len(winline)-1])} credits, meaning total win is ${total_win} and the winline: {str(symbols)} !!!!")
                             self.adjust_credits( winline[len(winline)-1] * self.bet)  ### this should use credits, so bet value x the payline amount
 
-                            if(self.debug_level >= 1):
+                            if(self.debug_level >= 2):
                                 print(f"    +=+=+=+= summation is now {self.summation}, which added: ({self.mean_pay} minus {(winline[len(winline)-1])}) squared. Now at {self.hit_total} win 'hits' ")
                             winbreak = 1
                             #return True
@@ -485,6 +488,7 @@ class SlotMachine:
             if(self.debug_level >= 1):
                 print(f"    New Maximum liability: {total_win}")
             self.maximum_liability = total_win
+        self.this_win = total_win  #This will be grabbed every 'spin'
 
 
     # spin reels: a major part of the functionality 
@@ -532,14 +536,15 @@ class Simulator():
                 else:    
                     print("!!!! Not enough credits, $" + str(self.this_bet) + " is required.")
                     break
-            else:
+            else: #main spinning game loop 
                 # some of the busy parts of the simulator. spin the slotmachine(sm)'s reels and track the data
                 # choosing a dictionary for the df_dict var because it's easy to convert to a DataFrame later. 
-                print(f"spin {str(iteration+1)} and credits ${str(self.sm.return_credits())}")
+                if(self.debug_level >= 1):
+                    print(f"spin {str(iteration+1)} and credits ${str(self.sm.return_credits())}")
                 self.sm.spin_reels()
                 self.incremental_credits.append(self.sm.return_credits())
                 self.spins.append(iteration+1)
-                self.df_dict.insert(iteration+1, self.sm.return_credits())
+                self.df_dict.insert(iteration+1, self.sm.this_win)
                 if(self.debug_level >= 3):
                     print(f"    spin {str(iteration)} and credits ${str(self.sm.return_credits())} and added to the dictionary: {self.df_dict[iteration]}")
 
@@ -562,7 +567,7 @@ class tkGui(tk.Tk):
         super().__init__()  #the super is a bit unnecessary, as there is nothing to inherit... but leaving it here for reference. 
         self.debug_level_default = 1
         #initial gui settings and layout
-        self.geometry("500x600")
+        self.geometry("500x670")
         self.title("Slot Simulator")
         self.columnconfigure(0, weight = 1)
         self.columnconfigure(1, weight = 1)
@@ -578,6 +583,8 @@ class tkGui(tk.Tk):
         self.input_filepath = StringVar(self, value = "./PARishSheets.xlsx") 
         self.sim_output_filepath = StringVar(self, value = "./simdata.csv")
         self.math_output_filepath = StringVar(self, value = "./mathdata.csv")
+        self.payline_number = IntVar(self, value = 0)
+        self.payline_totalbet = DoubleVar(self, value = 0 )
         self.status_box = StringVar(self, value = "[Select Input File at 1., or/then Click 2.]")
         # simulator spins/credits data
         self.df = pd.DataFrame()
@@ -642,7 +649,7 @@ class tkGui(tk.Tk):
             with open(str(self.math_output_filepath.get()), 'w') as fp:
                 fp.close()
         data.to_csv(str(self.math_output_filepath.get()))
-        if(self.debug_level >= 1):
+        if(self.debug_level.get() >= 1):
             print(f"    Math Output File Saving... {str(self.math_output_filepath.get())}")
 
     #### This is where the magic happens in the GUI, part 1 ####
@@ -653,10 +660,12 @@ class tkGui(tk.Tk):
         bet = float(self.bet_entry.get())
         initial_credits = self.credit_entry.get()
         if(self.debug_level.get() >= 3):
-            print(f"            Slot Machine geting passed: {input_filepath}, {bet}, {initial_credits}, {self.debug_level.get()}")
+            print(f"            Slot Machine geting passed: {input_filepath}, {bet}, {initial_credits}, {self.debug_level.get()} and inf checked? {self.infinite_checked.get()}")
         self.sm = SlotMachine(input_filepath, bet, initial_credits, self.debug_level.get(), self.infinite_checked.get())
         self.slot_ready = True
         self.status_box.set("[2. Slot Built - Credits Loaded]")
+        self.payline_number.set(len(self.sm.paylines))
+        self.payline_totalbet.set("{:.2f}".format(int(self.payline_number.get()) * float(self.bet_entry.get())))
         # a gui checkbox to show it was done? in the build column in slot 0?
 
     #### This is where the magic happens in the GUI, part 2 ####
@@ -665,11 +674,11 @@ class tkGui(tk.Tk):
         #print("buttonpress")
         if(self.slot_ready == True):
             self.status_box.set("[3. Done - Click 2 to Rebuild Slot]")            
-            self.sim = Simulator(self.sm, self.simruns.get(), self.debug_level.get())   ### why isn't this able to be touched? 
-            self.df = pd.DataFrame(self.sim.df_dict)
+            self.sim = Simulator(self.sm, self.simruns.get(), self.debug_level.get())   # simulator call 
+            self.df = pd.DataFrame(self.sim.df_dict)                                    # pull the saved simulator dat
+           
             #print(f" So here is what is returned from the SIM: \n {str(self.df)}")
             ######math goes here for output
-            ##########  #####  ######
             if(self.debug_level.get() >= 2):
                 print(f"        hit info for math, total hits {self.sm.hit_total} and simulator runs: {self.simruns.get()}")
             hfe = ( self.sm.hit_total / self.simruns.get() )  * 100   #### is this needed? it's used in the templates file... 
@@ -686,7 +695,9 @@ class tkGui(tk.Tk):
                 print(f"    $$$$ RTP is {self.sm.total_won} / {self.sm.total_bet} = {(self.sm.total_won / self.sm.total_bet)} ")
             self.return_to_player.set("{:.2f}".format(self.sm.total_won / self.sm.total_bet * 100)+"%")
             # finally, record / print our final values as a status
-            print(f"Final values, at spin {self.sim.spins[len(self.sim.spins)-1]}, the final credit value was {self.sim.incremental_credits[len(self.sim.incremental_credits)-1]}" )
+            if(self.debug_level.get() >= 0):
+                print(f"Final values, at spin {self.sim.spins[len(self.sim.spins)-1]}, the final credit value was {self.sim.incremental_credits[len(self.sim.incremental_credits)-1]}" )
+            print("Simulation Complete")
         else:
             self.status_box.set("[->2. Click 2 to Build or reload]")
             #print("->1. Slot needs to be loaded first.")
@@ -713,7 +724,7 @@ class tkGui(tk.Tk):
         gui_row_iteration += 1
         
         #simulator settings entries
-        self.label_debug = tk.Label(self, text="Debug Level (0-3) ")
+        self.label_debug = tk.Label(self, text="Debug Level: 0 (Silent) through 3 (Verbose) ")
         self.label_debug.grid(row = gui_row_iteration, column = 0, columnspan=2, sticky=E)
         self.debug_entry = ttk.Entry(self, width = 8, textvariable = self.debug_level)
         self.debug_entry.grid(row = gui_row_iteration, column = 2)
@@ -733,10 +744,6 @@ class tkGui(tk.Tk):
         self.infinite_check = ttk.Checkbutton(self, variable = self.infinite_checked, onvalue = True, offvalue = False)
         self.infinite_check.grid(row = gui_row_iteration, column = 2)        
         gui_row_iteration += 1
-        # the status box. intentionally making it a bit obnoxious to catch the eye and because I want to change how this works later. 
-        self.status_box_box = tk.Label(self, textvariable=self.status_box, bg = "dodgerblue1", fg = "ghostwhite")
-        self.status_box_box.grid(row = gui_row_iteration, columnspan=3 )
-        gui_row_iteration += 1
 
         # build slot button
         self.label_build_slot = tk.Label(self, text="2. Build Virtual Slot ")
@@ -745,11 +752,29 @@ class tkGui(tk.Tk):
         self.run_slots_button = tk.Button(self, text="2. Build Virtual Slot", command = self.build_slot_button)
         self.run_slots_button.grid(row = gui_row_iteration, column = 0, sticky=W, padx=15)
         gui_row_iteration += 1
+
+        # the status box. intentionally making it a bit obnoxious to catch the eye and because I want to change how this works later. 
+        self.status_box_box = tk.Label(self, textvariable=self.status_box, bg = "dodgerblue1", fg = "ghostwhite")
+        self.status_box_box.grid(row = gui_row_iteration, columnspan=3, pady=15 )
+        gui_row_iteration += 1
+
+        # payline explanation
+        self.label_payinfo = tk.Label(self, text="Paylines")
+        self.label_payinfo.grid(row = gui_row_iteration, column = 0, columnspan=2, sticky=E)
+        self.paylines_entry = ttk.Entry(self, width = 8, state='readonly', textvariable = self.payline_number)
+        self.paylines_entry.grid(row = gui_row_iteration, column = 2)
+        gui_row_iteration += 1
+        self.label_payinfo = tk.Label(self, text="Total Bet (bet per line * paylines): ")
+        self.label_payinfo.grid(row = gui_row_iteration, column = 0, columnspan=2, sticky=E)
+        self.paylines_entry = ttk.Entry(self, width = 8, state='readonly', textvariable = self.payline_totalbet)
+        self.paylines_entry.grid(row = gui_row_iteration, column = 2)
+        gui_row_iteration += 1
+
         # simulator info
         self.label_simruns = tk.Label(self, text="Simulator Total Spins" )
         self.label_simruns .grid(row = gui_row_iteration, column = 0, columnspan=2, sticky=E)
         self.simrun_entry = ttk.Entry(self, width = 10, textvariable = self.simruns)
-        self.simrun_entry.grid(row = gui_row_iteration, column = 2)
+        self.simrun_entry.grid(row = gui_row_iteration, column = 2, pady=5)
         gui_row_iteration += 1
 
         # Run Button
@@ -762,7 +787,7 @@ class tkGui(tk.Tk):
 
         #sim label
         self.label_output = tk.Label(self, text="4a. Save Outputs")
-        self.label_output.grid(row = gui_row_iteration, column = 0, columnspan = 3)
+        self.label_output.grid(row = gui_row_iteration, column = 0, columnspan = 3, pady=5)
         gui_row_iteration += 1
         #Sim output file
         self.sim_output_label_filepath = tk.Label(self, text="Sim Output Filepath ")
@@ -802,26 +827,26 @@ class tkGui(tk.Tk):
         ### math output area
         # Hit frequency (hits / spins)
         self.label_hit_freq = tk.Label(self, text="Hit Frequency  ")
-        self.label_hit_freq.grid(row = gui_row_iteration, column = 0, columnspan=2, sticky=E)
-        self.hit_freq_entry = ttk.Entry(self, width = 8, textvariable = self.hit_freq)
+        self.label_hit_freq.grid(row = gui_row_iteration, column = 0, columnspan=2, sticky=E, pady=5)
+        self.hit_freq_entry = ttk.Entry(self, width = 8, textvariable = self.hit_freq, state='readonly')
         self.hit_freq_entry.grid(row = gui_row_iteration, column = 2)
         gui_row_iteration += 1
         # Max Liability (biggest win)
         self.label_max_liability = tk.Label(self, text="Max Liability  ")
         self.label_max_liability.grid(row = gui_row_iteration, column = 0, columnspan=2, sticky=E)
-        self.max_liability_entry = ttk.Entry(self, width = 8, textvariable = self.max_liability)
+        self.max_liability_entry = ttk.Entry(self, width = 8, textvariable = self.max_liability, state='readonly')
         self.max_liability_entry.grid(row = gui_row_iteration, column = 2)
         gui_row_iteration += 1
         # Volatility  (see documentation, it's complex...  volatility  = square root of: (  ( ( sum(win values - mean pay) ) ^^ 2 ) / total spins  )
         self.label_volatility = tk.Label(self, text="Volatility Index ")
         self.label_volatility.grid(row = gui_row_iteration, column = 0, columnspan=2, sticky=E)
-        self.volatility_entry = ttk.Entry(self, width = 8, textvariable = self.volatility)
+        self.volatility_entry = ttk.Entry(self, width = 8, textvariable = self.volatility, state='readonly')
         self.volatility_entry.grid(row = gui_row_iteration, column = 2)
         gui_row_iteration += 1
         # Return to Player
         self.label_rtp = tk.Label(self, text="Return to Player Percentage (RTP) ")
         self.label_rtp.grid(row = gui_row_iteration, column = 0, columnspan=2, sticky=E)
-        self.rtp_entry = ttk.Entry(self, width = 8, textvariable = self.return_to_player)
+        self.rtp_entry = ttk.Entry(self, width = 8, textvariable = self.return_to_player, state='readonly')
         self.rtp_entry.grid(row = gui_row_iteration, column = 2)
         gui_row_iteration += 1
         ### set jackpot
