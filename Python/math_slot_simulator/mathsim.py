@@ -30,10 +30,12 @@ from collections import defaultdict
 class SlotMachine: 
     """Slot machine class, takes in the 'input' file as well as the reel # configured """ 
     # initialize, setting allowances to settings:
-    def __init__(self, filepath, bet, initial_credits, debug_level):
+    def __init__(self, filepath, bet, initial_credits, debug_level, infinite_checked):
         self.input_filepath = filepath
-        self.game_credits = initial_credits 
+        self.game_credits = initial_credits   # the 'wallet' value 
+        self.initial_credits = initial_credits  #specifically to save the value for the infinite check
         self.bet = bet
+        self.infinite_checked = infinite_checked
         #initialize data to be used in the local object namespace, so it's able to be referenced. 
         self.game_window = []
         self.paytable = []
@@ -78,7 +80,7 @@ class SlotMachine:
         #referenced by paylines[full-payline][payline-item-number][either 0 for reel, or 1 for position]
         #so paylines[0][2] is the third reel position to check at game_window[2][0], [2]reel three, [0]top position.
         #self.paylines
-        self.payline_data = pd.read_excel(self.input_filepath, sheet_name='Paylines9')
+        self.payline_data = pd.read_excel(self.input_filepath, sheet_name='Paylines')
 
         self.paylines = []
         for idx, row in self.payline_data.iterrows():
@@ -316,7 +318,7 @@ class SlotMachine:
         #accessible in object with:  paytable[each_win_line from 0 to len-1][0 to len-1 for each symbol and the value]
         ##
         #### last value should be credits, to multiply vs the bet.. not dollar values
-        self.paytable_data = pd.read_excel(self.input_filepath, sheet_name='Paytable3')
+        self.paytable_data = pd.read_excel(self.input_filepath, sheet_name='Paytable')
         self.paytable = []
         self.mean_pay = 0
         for idx, row in self.paytable_data.iterrows():
@@ -333,6 +335,7 @@ class SlotMachine:
         total_combinations = 0
         # step 1. mean pay
         for line in self.paytable:
+            #print(f"line {line[len(line)-1]}")
             self.mean_pay += line[len(line)-1]
         self.mean_pay = self.mean_pay / len(self.paytable)
         if(self.debug_level >= 2):
@@ -497,8 +500,15 @@ class Simulator():
             if( self.this_bet > float(self.sm.game_credits) ):
                 # can't really send back a status to the gui?? 
                 #simgui.slot_check.set("[Reset Slot]")
-                print("!!!! Not enough credits, $" + str(self.this_bet) + " is required.")
-                break
+                if(self.debug_level >= 2):
+                    print(f"    $$$$ no futher credits, if this is true: {self.sm.infinite_checked} then we should see credits added and spins continue")
+                if(self.sm.infinite_checked == True):
+                    self.sm.game_credits += self.sm.initial_credits
+                    if(self.debug_level >= 1):
+                        print(f"    $$$$ adding {self.sm.initial_credits}, credits should now reflect that at: {self.sm.game_credits} ")
+                else:    
+                    print("!!!! Not enough credits, $" + str(self.this_bet) + " is required.")
+                    break
             else:
                 # some of the busy parts of the simulator. spin the slotmachine(sm)'s reels and track the data
                 # choosing a dictionary for the df_dict var because it's easy to convert to a DataFrame later. 
@@ -538,6 +548,7 @@ class tkGui(tk.Tk):
         # default text/value entries
         self.bet = StringVar(self, value = "0.25")  ## so I need to set this as a string in order to get a decimal.
         self.slot_ready = False
+        self.infinite_checked = BooleanVar(self, value=False)
         # .. simulator settings: 
         self.initial_credits = IntVar(self, value = 100)
         self.simruns = IntVar(self, value = 500)
@@ -620,7 +631,7 @@ class tkGui(tk.Tk):
         initial_credits = self.credit_entry.get()
         if(self.debug_level.get() >= 3):
             print(f"            Slot Machine geting passed: {input_filepath}, {bet}, {initial_credits}, {self.debug_level.get()}")
-        self.sm = SlotMachine(input_filepath, bet, initial_credits, self.debug_level.get())
+        self.sm = SlotMachine(input_filepath, bet, initial_credits, self.debug_level.get(), self.infinite_checked.get())
         self.slot_ready = True
         self.status_box.set("[2. Slot Built - Credits Loaded]")
         # a gui checkbox to show it was done? in the build column in slot 0?
@@ -639,14 +650,14 @@ class tkGui(tk.Tk):
             if(self.debug_level.get() >= 2):
                 print(f"        hit info for math, total hits {self.sm.hit_total} and simulator runs: {self.simruns.get()}")
             hfe = ( self.sm.hit_total / self.simruns.get() )  * 100   #### is this needed? it's used in the templates file... 
-            self.hit_freq.set(str(hfe)+"%")
+            self.hit_freq.set(str(round(hfe, 2))+"%")
             ml = self.sm.maximum_liability
             self.max_liability.set("$"+str(ml))
             #### volatility goes here. ### 
             if(self.debug_level.get() >= 1):
                 print(f"    ^^^^ the volatility math: {self.sm.summation} / {self.simruns.get() * (len(self.sm.paytable) + 1)} = {self.sm.summation/(self.simruns.get() * (len(self.sm.paytable) + 1))}.. sqrt is {math.sqrt( self.sm.summation / (self.simruns.get() * (len(self.sm.paytable) + 1) ))}, and so with * 1.96 the volatility index is {math.sqrt( self.sm.summation / (self.simruns.get() * (len(self.sm.paytable) + 1) )) * 1.96} ")
             volatilitymath = math.sqrt( self.sm.summation / (self.simruns.get() * (len(self.sm.paytable) + 1) ) ) * 1.96
-            self.volatility.set(volatilitymath)
+            self.volatility.set(round(volatilitymath, 2))
             # RTP
             if(self.debug_level.get() >= 1):
                 print(f"    $$$$ RTP is {self.sm.total_won} / {self.sm.total_bet} = {(self.sm.total_won / self.sm.total_bet)} ")
@@ -694,7 +705,11 @@ class tkGui(tk.Tk):
         self.credit_entry = ttk.Entry(self, width = 8, textvariable = self.initial_credits)
         self.credit_entry.grid(row = gui_row_iteration, column = 2)
         gui_row_iteration += 1
-
+        self.label_infinite = tk.Label(self, text="Infinite Credits: ")
+        self.label_infinite.grid(row = gui_row_iteration, column = 0, columnspan=2, sticky=E)
+        self.infinite_check = ttk.Checkbutton(self, variable = self.infinite_checked, onvalue = True, offvalue = False)
+        self.infinite_check.grid(row = gui_row_iteration, column = 2)        
+        gui_row_iteration += 1
         # the status box. intentionally making it a bit obnoxious to catch the eye and because I want to change how this works later. 
         self.status_box_box = tk.Label(self, textvariable=self.status_box, bg = "dodgerblue1", fg = "ghostwhite")
         self.status_box_box.grid(row = gui_row_iteration, columnspan=3 )
