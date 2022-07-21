@@ -27,18 +27,37 @@ from collections import defaultdict
 
 ### slot machine class - meant to keep persistant data on its own state and 'spin reels' to give outcomes
 class SlotMachine: 
-    """Slot machine class, takes in the 'input' file, and a number of gui elements """ 
+    """Slot machine class, takes in a number of gui elements: filepath, bet, initial credits, debug level, and infinite cash check box boolean """ 
     # initialize, setting allowances to settings:
     def __init__(self, filepath, bet, initial_credits, debug_level, infinite_checked):
+        # initialization values 
         self.input_filepath = filepath
         self.game_credits = initial_credits   # the 'wallet' value 
         self.initial_credits = initial_credits  #specifically to save the value for the infinite check
         self.bet = bet
         self.infinite_checked = infinite_checked
-        #initialize data to be used in the local object namespace, so it's able to be referenced. 
+        # original 3 reel test data
+        self.reels_sheetname = 'Reels'
+        self.paytable_sheetname = 'Paytable'
+        self.paylines_sheetname = 'Paylines'
+        ## examples, uncomment to override the original sheet values
+        # 3 reel low volatility
+        #self.reels_sheetname = 'Reels_lowvol'
+        #self.paytable_sheetname = 'Paytable_lowvol'
+        #self.paylines_sheetname = 'Paylines'
+        # 3 reel high volatility 
+        #self.reels_sheetname = 'Reels_highvol'
+        #self.paytable_sheetname = 'Paytable_highvol'
+        #self.paylines_sheetname = 'Paylines'      
+        # 5 reels, Marissa's original setup 
         self.reels_sheetname = 'Reels5'
         self.paytable_sheetname = 'Paytable5'
-        self.paylines_sheetname = 'Paylines25'
+        self.paylines_sheetname = 'Paylines25'        
+        # ad hoc, a 5 reel with *M and *F 3/4/5x paytable lines added;
+        #self.reels_sheetname = 'Reels5'
+        #self.paytable_sheetname = 'Paytable5_withwilds'
+        #self.paylines_sheetname = 'Paylines25'
+        
         self.game_window = []
         self.paytable = []
         self.reels = []
@@ -67,13 +86,13 @@ class SlotMachine:
         ### the reels, here, are the reel strips. 
         self.build_reels()
         # chooses the random positions for each of the reels, eventually add the total reel number to pass
-        self.randomize_reels()
+        self.randomize_mech_reels()
         #build paylines: read in file, store a paylines list to reference elsewhere - this is the map of how it checks for wins against the game window
         self.build_paylines()
         # paytable next, the reel lenghts are needed for math, along with the paylines  
         self.build_pay_table()
         #finally, build the 'game window'.. a 2 tier array/list where the symbols get set from the reels each spin, and what is checked against by the paylines
-        self.build_game_window()
+        self.build_mechanical_game_window()
         #end initialization
 
     def build_paylines(self):
@@ -95,7 +114,7 @@ class SlotMachine:
             if(self.debug_level >= 2):
                 print(f"         **** the payline being added is: {temprow}")
             self.paylines.append(temprow)
-        print (f"!-!-        paylines total is {len(self.paylines)}")
+        #print (f"!-!-        paylines total is {len(self.paylines)}")
         self.paylines_total = len(self.paylines) # very important, as this defaults to 9 for 3x3 
 
         # to note: default here is for 3x3.  This determines our game window sizing. 
@@ -122,38 +141,47 @@ class SlotMachine:
         ## this will be referenced by the reels anytime we need to check for columns
         self.reel_data = pd.read_excel(self.input_filepath, sheet_name=self.reels_sheetname)
         # we should do some testing about the reel data being good data.. but python will just complain either way
-
-        if("Reel 5" in self.reel_data): # if the data contains 'reel'
-            self.reel5 = self.reel_data['Reel 5']
-            self.reels = 5
-            self.reel5pos = 0
-            #print(f"{self.reel5}")
+        # We always want these
+        self.reel3 = self.reel_data['Reel 3']
+        self.reel3 = self.reel3.dropna()
+        self.reel3pos = 0
+        self.reel2 = self.reel_data['Reel 2']
+        self.reel2 = self.reel2.dropna()
+        self.reel2pos = 0
+        self.reel1 = self.reel_data['Reel 1']
+        self.reel1 = self.reel1.dropna()
+        self.reel1pos = 0    
         if("Reel 4" in self.reel_data):
             self.reel4 = self.reel_data['Reel 4']
+            self.reel4 = self.reel4.dropna()
             self.reels = 4
             self.reel4pos = 0
             #print(f"{self.reel4}")
+     #       if(self.debug_level >= 1):
+     #           print(f"     |||| reel lengths: {str(len(self.reel1))}, {str(len(self.reel2))}, {str(len(self.reel3))}, {str(len(self.reel4))}")
+        if("Reel 5" in self.reel_data): # if the data contains 'reel'
+            self.reel5 = self.reel_data['Reel 5']
+            self.reel5 = self.reel5.dropna()
+            self.reels = 5
+            self.reel5pos = 0
+            #print(f"{self.reel5}")
+            if(self.debug_level >= 1):
+                print(f"     |||| reel lengths: {str(len(self.reel1))}, {str(len(self.reel2))}, {str(len(self.reel3))}, {str(len(self.reel4))}, {str(len(self.reel5))}")
         #else.. it's 3 reels. 
         else: 
             self.reels = 3
-        # We always want these
-        self.reel3 = self.reel_data['Reel 3']
-        self.reel3pos = 0
-        self.reel2 = self.reel_data['Reel 2']
-        self.reel2pos = 0
-        self.reel1 = self.reel_data['Reel 1']
-        self.reel1pos = 0    
+            if(self.debug_level >= 1):
+                print(f"     |||| reel lengths: {str(len(self.reel1))}, {str(len(self.reel2))}, {str(len(self.reel3))}")
+
         #except:
             #print(f" !! Not a good filename: {self.input_filepath} !!")
         # dataframe_var.shape to get dimensionality: (22,5)    .. so dataframe_var.shape[0] is the rows (depth) and [1] is the columns (width)
 
         # if there is a file at the spot, read it. ... this logic should probably be changed/added to the payline/paytable pieces..
 
-    def randomize_reels(self):
+    def randomize_mech_reels(self):
         #if(self.debug_level >= 2):
         #    print(f"        before randomize: {str(self.reel1pos)} {str(self.reel2pos)} {str(self.reel3pos)} " )
-        if(self.debug_level >= 1):
-            print(f"     |||| reel lengths: {str(len(self.reel1))}, {str(len(self.reel2))}, {str(len(self.reel3))}, {str(len(self.reel4))}, {str(len(self.reel5))}")
         self.reel1pos=random.randint(0,len(self.reel1)-1)
         self.reel2pos=random.randint(0,len(self.reel2)-1)
         self.reel3pos=random.randint(0,len(self.reel3)-1)
@@ -192,17 +220,80 @@ class SlotMachine:
         #if(self.debug_level >= 3):
             #print("resetting wildsymbols: " + str(self.wildsymbols))
 
+    def build_random_video_game_window(self):
+        if("Reel 5" in self.reel_data):  
+            # initializing the generic window
+            self.game_window = [['gh1', 'gh6', 'gh11', 'gh16', 'gh21'], ['gh2', 'gh7', 'gh12', 'gh17', 'gh22'], ['gh3', 'gh8', 'gh13', 'gh18', 'gh23'], ['gh4', 'gh9', 'gh14', 'gh19', 'gh24'], ['gh5', 'gh10', 'gh15', 'gh20', 'gh25']]
+            if(self.debug_level >= 2):
+                print(f"    five reel video: all random " )
+            #top line
+            self.game_window[0][0]=self.reel1[random.randint(0,len(self.reel1)-1)]
+            self.game_window[1][0]=self.reel2[random.randint(0,len(self.reel2)-1)]
+            self.game_window[2][0]=self.reel3[random.randint(0,len(self.reel3)-1)]
+            self.game_window[3][0]=self.reel4[random.randint(0,len(self.reel4)-1)]
+            self.game_window[4][0]=self.reel4[random.randint(0,len(self.reel5)-1)]
+            # second line  
+            self.game_window[0][1]=self.reel1[random.randint(0,len(self.reel1)-1)]
+            self.game_window[1][1]=self.reel2[random.randint(0,len(self.reel2)-1)]
+            self.game_window[2][1]=self.reel3[random.randint(0,len(self.reel3)-1)]
+            self.game_window[3][1]=self.reel4[random.randint(0,len(self.reel4)-1)]
+            self.game_window[4][1]=self.reel4[random.randint(0,len(self.reel5)-1)]  
+            # third line
+            self.game_window[0][2]=self.reel1[random.randint(0,len(self.reel1)-1)]
+            self.game_window[1][2]=self.reel2[random.randint(0,len(self.reel2)-1)]
+            self.game_window[2][2]=self.reel3[random.randint(0,len(self.reel3)-1)]
+            self.game_window[3][2]=self.reel4[random.randint(0,len(self.reel4)-1)]
+            self.game_window[4][2]=self.reel4[random.randint(0,len(self.reel5)-1)]  
+            # if the game window is supposed to be 5x5, those would go here... 
+
+        elif("Reel 4" in self.reel_data):
+            self.game_window = [['gh1', 'gh5', 'gh9', 'gh13'], ['gh2', 'gh6', 'gh10', 'gh14'], ['gh3', 'gh8', 'gh11', 'gh15'], ['gh4', 'gh8', 'gh12', 'gh16']]
+            if(self.debug_level >= 2):
+                print(f"    four reel video: all random")
+            #top line
+            self.game_window[0][0]=self.reel1[random.randint(0,len(self.reel1)-1)]
+            self.game_window[1][0]=self.reel2[random.randint(0,len(self.reel2)-1)]
+            self.game_window[2][0]=self.reel3[random.randint(0,len(self.reel3)-1)]
+            self.game_window[3][0]=self.reel4[random.randint(0,len(self.reel4)-1)]
+            # second line  
+            self.game_window[0][1]=self.reel1[random.randint(0,len(self.reel1)-1)]
+            self.game_window[1][1]=self.reel2[random.randint(0,len(self.reel2)-1)]
+            self.game_window[2][1]=self.reel3[random.randint(0,len(self.reel3)-1)]
+            self.game_window[3][1]=self.reel4[random.randint(0,len(self.reel4)-1)]
+            # third line
+            self.game_window[0][2]=self.reel1[random.randint(0,len(self.reel1)-1)]
+            self.game_window[1][2]=self.reel2[random.randint(0,len(self.reel2)-1)]
+            self.game_window[2][2]=self.reel3[random.randint(0,len(self.reel3)-1)]
+            self.game_window[3][2]=self.reel4[random.randint(0,len(self.reel4)-1)]
+
+        elif("Reel 3" in self.reel_data):
+            self.game_window = [['gh1', 'gh4', 'gh7'], ['gh2', 'gh5', 'gh8'], ['gh3', 'gh6', 'gh9']]
+            if(self.debug_level >= 1):
+                print(f"    three reel video: all random ")          
+            #top line
+            self.game_window[0][0]=self.reel1[random.randint(0,len(self.reel1)-1)]
+            self.game_window[1][0]=self.reel2[random.randint(0,len(self.reel2)-1)]
+            self.game_window[2][0]=self.reel3[random.randint(0,len(self.reel3)-1)]
+            # second line  
+            self.game_window[0][1]=self.reel1[random.randint(0,len(self.reel1)-1)]
+            self.game_window[1][1]=self.reel2[random.randint(0,len(self.reel2)-1)]
+            self.game_window[2][1]=self.reel3[random.randint(0,len(self.reel3)-1)]
+            # third line
+            self.game_window[0][2]=self.reel1[random.randint(0,len(self.reel1)-1)]
+            self.game_window[1][2]=self.reel2[random.randint(0,len(self.reel2)-1)]
+            self.game_window[2][2]=self.reel3[random.randint(0,len(self.reel3)-1)]
+
     # note will need to change these inputs, to allow for >3
-    def build_game_window(self):
-        # initially: 3 reels, more logic later - like sending a list of the positions, so it's size agnostic. 
+    def build_mechanical_game_window(self):
+        """ this is where the game window logic is handled, using the SlotMachine's variables - mechanical version"""
         # if reel1 pos == 0 (or reel's 2 or three), then set (game_window[reel][0]) as reelN[len(reel1)-1)
         # else use reelN[reelposN-1]
         ##### 5 Reels have two configs: 5x3 and 5x5.  ... this is for 5x5..  but how do we tell the difference? is it in the paytables? becuase that basically defines that data...: 
         if("Reel 5" in self.reel_data):  
-            # instantiating generic window
+            # initializing the generic window
             self.game_window = [['gh1', 'gh6', 'gh11', 'gh16', 'gh21'], ['gh2', 'gh7', 'gh12', 'gh17', 'gh22'], ['gh3', 'gh8', 'gh13', 'gh18', 'gh23'], ['gh4', 'gh9', 'gh14', 'gh19', 'gh24'], ['gh5', 'gh10', 'gh15', 'gh20', 'gh25']]
             if(self.debug_level >= 2):
-                print(f"    reels: {str(self.reel1pos)} + {str(self.reel2pos)} + {str(self.reel3pos)} + {str(self.reel4pos)} + {str(self.reel5pos)} " )
+                print(f"    **** debug: reel positions at: {str(self.reel1pos)} + {str(self.reel2pos)} + {str(self.reel3pos)} + {str(self.reel4pos)} + {str(self.reel5pos)} " )
             if(self.reel1pos==0):
                 self.game_window[0][0]=self.reel1[len(self.reel1)-1]
             else:
@@ -258,7 +349,7 @@ class SlotMachine:
         elif("Reel 4" in self.reel_data):
             self.game_window = [['gh1', 'gh5', 'gh9', 'gh13'], ['gh2', 'gh6', 'gh10', 'gh14'], ['gh3', 'gh8', 'gh11', 'gh15'], ['gh4', 'gh8', 'gh12', 'gh16']]
             if(self.debug_level >= 2):
-                print(f"    >> {str(reel1pos)} {str(reel2pos)} {str(reel3pos)} {str(reel4pos)} + {str(len(self.reel1)-1)} {str(self.reel1[len(self.reel1)-1])}")
+                print(f"    **** debug: reel positions at: {str(reel1pos)} {str(reel2pos)} {str(reel3pos)} {str(reel4pos)} + {str(len(self.reel1)-1)} {str(self.reel1[len(self.reel1)-1])}")
             if(self.reel1pos==0):
                 self.game_window[0][0]=self.reel1[len(self.reel1)-1]
             else:
@@ -304,8 +395,8 @@ class SlotMachine:
 
         elif("Reel 3" in self.reel_data):
             self.game_window = [['gh1', 'gh4', 'gh7'], ['gh2', 'gh5', 'gh8'], ['gh3', 'gh6', 'gh9']]
-            #if(self.debug_level >= 1):
-                #print(f"    {str(self.reel1pos)} + {str(self.reel2pos)} + {str(self.reel3pos)} + {str(len(self.reel1)-1)} + {str(self.reel1[len(self.reel1)-1])} ")
+            if(self.debug_level >= 2):
+                print(f"        **** debug: reel positions at: {str(self.reel1pos)} + {str(self.reel2pos)} + {str(self.reel3pos)} ")
             if(self.reel1pos==0):
                 self.game_window[0][0]=self.reel1[len(self.reel1)-1]
             else:
@@ -349,12 +440,15 @@ class SlotMachine:
         ##
         #### last value should be credits, to multiply vs the bet.. not dollar values
         self.paytable_data = pd.read_excel(self.input_filepath, sheet_name=self.paytable_sheetname)
+        # scrub np.nan to test for 5x/4x/3x paytable lines 
+        self.mod_paytable_data = self.paytable_data.fillna("NaN")
+
         self.paytable = []
         self.mean_pay = 0
-        for idx, row in self.paytable_data.iterrows():
+        for idx, row in self.mod_paytable_data.iterrows():
             # for each row
             temprow = [] 
-            for i in range(0, self.paytable_data.shape[1]):
+            for i in range(0, self.mod_paytable_data.shape[1]):
                 temprow.append(row[i])
             self.paytable.append(temprow)
 
@@ -362,7 +456,7 @@ class SlotMachine:
             print(f"        Paytable: {self.paytable}")
 
         # Paytable Math begins here. 
-        total_combinations = 0
+        #total_combinations = 0
         # step 1. mean pay
         for line in self.paytable:
             #print(f"line {line[len(line)-1]}")
@@ -420,73 +514,104 @@ class SlotMachine:
             if(self.debug_level >= 2):
                 print(f"    **** debug: in win line checking, line {line}")
             for reel_pos in line:
-                if(self.debug_level >= 2):
+                if(self.debug_level >= 3):
                     print(f"        **** debug: reel pos: {int(reel_pos[0])}")
                 symbols.append(self.game_window[int(reel_pos[0])][int(reel_pos[2])])
             if(self.debug_level >= 1):
-                print(f"    testing payline {iteration} with symbols: {str(symbols)}")  # this is pulling game window correctly
+                print(f"    ****     testing payline {iteration} with symbols: {str(symbols)}     ****")  # this is pulling game window correctly
             #test against paytable
+
             self.reset_wildsymbols()
-            for winline in self.paytable:
+            for win_combo in self.paytable:
+                if(self.debug_level >= 2):
+                    print(f"        - Winning Combo Line being tested: {str(win_combo)}")
                 for reelnum in range(0, self.reels):
                     # reworking logic..
-                    if(self.debug_level >= 3):
-                        print("             - testing reel: " + str(reelnum+1) + " for " + str(symbols[reelnum]) + " versus " + str(winline[reelnum]))
-                    if "*" in str(winline[reelnum]):
+                    if(self.debug_level >= 2):
+                        print(f"             - testing reel: {str(reelnum+1)} out of {str(self.reels)} for {str(symbols[reelnum])} to match {str(win_combo[reelnum])}")
+                    if "*" in str(win_combo[reelnum]):
                         #print("Found an Any Type Symbol")
-                        if winline[reelnum] == '*B':
+                        if win_combo[reelnum] == '*B':
                             for sym in ['1B','2B', '3B']:
                             # eventually, logic to include the right ones from the reel.
                                 self.wildsymbols.append(sym)
                             #if(self.debug_level >= 3):
                                 #print("            - appended Bars to wild symbols")
-                        elif winline[reelnum] == '*7':
+                        elif win_combo[reelnum] == '*7':
                             for sym in ['B7','R7']:
                                 self.wildsymbols.append(sym)
                             #if(self.debug_level >= 3):
                                 #print("            - appended 7s to wild symbols")
-                        elif winline[reelnum] == '*M':
+                        elif win_combo[reelnum] == '*M':
                             for sym in ['M1','M2', 'M3', 'M4']:
                                 self.wildsymbols.append(sym)
                             #if(self.debug_level >= 3):
                                 #print("            - appended Ms to wild symbols")
-                        elif winline[reelnum] == '*F':
+                        elif win_combo[reelnum] == '*F':
                             for sym in ['F5','F6','F7', 'F8', 'F9']:
                                 self.wildsymbols.append(sym)
                             #if(self.debug_level >= 3):
                                 #print("            - appended Fs to wild symbols")
-                        else: 
+                        #else: 
                             # any symbol.. for 4 and 5 reels to ignore specific spots (allowing different length win lines)
-                            self.wildsymbols.append('*')
-                       # other wild symbols would go here. 
+                        #    self.wildsymbols.append('*')
+                        #                # other wild symbols would go here. 
 
-                    # win logic                     ### NOTE: Winning logic is *HERE* 
-                    if((symbols[reelnum] == winline[reelnum]) or (symbols[reelnum] in self.wildsymbols)):
-                        #if they do not match at any time, return false 
+                    # win logic          pt 1: for nan on 5 reel paytables              
+                    #if(self.debug_level >= 1 and reelnum > 2):
+                    #    print(f"    testing reel {reelnum+1} with win_combo[reelnum]: {win_combo[reelnum]}")
+                    if(win_combo[reelnum] == "NaN"):
+                        if(self.debug_level >= 3):
+                            print(f"    !!!!    Found nan    !!!!")
+                        # meaning it encountered an empty cell, assume win
+                        self.reset_wildsymbols()
+                        # this is where the hit_total is added, should go off for each win_combo found 
+                        self.hit_total += 1
+                        if(self.debug_level >= 3):
+                            print(f"    +=+=+=+= summation is currently {self.summation} and about to add {(self.mean_pay - (win_combo[len(win_combo)-1] ) ) ** 2}")
+                        self.summation += (self.mean_pay - (win_combo[len(win_combo)-1] ) ) ** 2     ##* self.bet) ) ** 2
+
+                        total_win += win_combo[len(win_combo)-1] * self.bet
+                        total_win_display = "{:.2f}".format(total_win) 
+
+                        if(self.debug_level >= 1):
+                            print(f"    !!!! WIN! awarding {str(win_combo[len(win_combo)-1])} credits, meaning total win is ${total_win_display} and the winning line is : {str(symbols)} !!!!")
+                        self.adjust_credits( win_combo[len(win_combo)-1] * self.bet)  ### this should use credits, so bet value x the payline amount
+
                         if(self.debug_level >= 2):
-                            print("        Match symbol " + symbols[reelnum]  + " against the paytable symbol " + winline[reelnum] + " on reelnum: " + str(reelnum+1)) # + " and testing reels: " + str(self.reels))
-                        #payout is the last entry on the winline
-                        if(reelnum + 1 == self.reels):
+                            print(f"    +=+=+=+= summation is now {self.summation}, which added: ({self.mean_pay} minus {(win_combo[len(win_combo)-1])}) squared. Now at {self.hit_total} win 'hits' ")
+                        winbreak = 1
+                        #return True
+                        self.reset_wildsymbols()    
+
+                    ### NOTE: Winning logic is *HERE* pt 2
+                    if((symbols[reelnum] == win_combo[reelnum]) or (symbols[reelnum] in self.wildsymbols)):
+                        #if they do not match at any time, return false 
+                        if(self.debug_level >= 1 and reelnum > 1):
+                            print(f"        Match symbol {symbols[reelnum]} against the paytable symbol {win_combo[reelnum]} on reel number: {str(reelnum+1)} against the winning combo line: {win_combo}") 
+                        #payout is the last entry on the win_combo
+                        ######## HERE IS WHERE IT's MISSING stuff on 5 reels --- 
+                        if(reelnum + 1 == self.reels): # if it's the same all the way down, the whole line is a win
                             self.reset_wildsymbols()
-                            # this is where the hit_total is added, should go off for each winline found 
+                            # this is where the hit_total is added, should go off for each win_combo found 
                             self.hit_total += 1
                             if(self.debug_level >= 3):
-                                print(f"    +=+=+=+= summation is currently {self.summation} and about to add {(self.mean_pay - (winline[len(winline)-1] ) ) ** 2}")
-                            self.summation += (self.mean_pay - (winline[len(winline)-1] ) ) ** 2     ##* self.bet) ) ** 2
+                                print(f"    +=+=+=+= summation is currently {self.summation} and about to add {(self.mean_pay - (win_combo[len(win_combo)-1] ) ) ** 2}")
+                            self.summation += (self.mean_pay - (win_combo[len(win_combo)-1] ) ) ** 2     ##* self.bet) ) ** 2
 
-                            total_win += winline[len(winline)-1] * self.bet 
+                            total_win += win_combo[len(win_combo)-1] * self.bet 
+                            total_win_display = "{:.2f}".format(total_win) 
                             if(self.debug_level >= 1):
-                                print(f"    !!!! WIN! awarding {str(winline[len(winline)-1])} credits, meaning total win is ${total_win} and the winline: {str(symbols)} !!!!")
-                            self.adjust_credits( winline[len(winline)-1] * self.bet)  ### this should use credits, so bet value x the payline amount
+                                print(f"    !!!! WIN! awarding {str(win_combo[len(win_combo)-1])} credits, meaning total win is ${total_win_display} and the winning line is : {str(symbols)} !!!!")
+                            self.adjust_credits( win_combo[len(win_combo)-1] * self.bet)  ### this should use credits, so bet value x the payline amount
 
                             if(self.debug_level >= 2):
-                                print(f"    +=+=+=+= summation is now {self.summation}, which added: ({self.mean_pay} minus {(winline[len(winline)-1])}) squared. Now at {self.hit_total} win 'hits' ")
+                                print(f"    +=+=+=+= summation is now {self.summation}, which added: ({self.mean_pay} minus {(win_combo[len(win_combo)-1])}) squared. Now at {self.hit_total} win 'hits' ")
                             winbreak = 1
                             #return True
                             self.reset_wildsymbols()                            
                     else:
                         self.reset_wildsymbols()
-
                         break
                         #else, if it's the last reel, and it didn't match, 
                 ##### double check above
@@ -494,6 +619,7 @@ class SlotMachine:
                 if(winbreak == 1):
                     winbreak = 0
                     break
+
         # end of the payline checking, any totaling happens here. 
         if(self.debug_level >= 1):
             print(f"    +=+=+=+=  current summation: {self.summation} ")
@@ -504,7 +630,6 @@ class SlotMachine:
                 print(f"    New Maximum liability: {total_win}")
             self.maximum_liability = total_win
         self.this_win = total_win  #This will be grabbed every 'spin'
-
 
     # spin reels: a major part of the functionality 
     def spin_reels(self):
@@ -518,9 +643,10 @@ class SlotMachine:
         self.adjust_credits(total_bet * -1)
         #STUB: remove wallet value: bet x paylines; check to see if player has enough
         #randomly choose reel positions for each of the reels
-        self.randomize_reels()
-        self.build_game_window()
+        self.randomize_mech_reels()
+        self.build_mechanical_game_window()
         self.is_a_win()
+
 
 
 class Simulator():
@@ -530,9 +656,13 @@ class Simulator():
         self.sm = sm
         self.this_bet = sm.bet * float(sm.paylines_total)
         self.incremental_credits = []
+        self.incremental_rtp = []
         self.spins = []
         self.df_dict = ["credits"] # takes up the header line and lets us start at iteration 1 for data purposes
+        self.rtp_dict = ["RTP"] # takes up the header line and lets us start at iteration 1 for data purposes
         self.debug_level = debug_level
+        self.total_bet = 0
+        self.total_won = 0
         self.run_sim()
         #self.plot_result()   # the automatic plotting was causing issues with things hanging until it closed. 
 
@@ -554,22 +684,36 @@ class Simulator():
             else: #main spinning game loop 
                 # some of the busy parts of the simulator. spin the slotmachine(sm)'s reels and track the data
                 # choosing a dictionary for the df_dict var because it's easy to convert to a DataFrame later. 
+                self.total_bet += self.this_bet 
                 if(self.debug_level >= 1):
                     print(f"spin {str(iteration+1)} and credits ${str(self.sm.return_credits())}")
                 self.sm.spin_reels()
+                self.total_won += self.sm.this_win 
+                self.incremental_rtp.append( (self.total_won / self.total_bet) * 100 )
                 self.incremental_credits.append(self.sm.return_credits())
                 self.spins.append(iteration+1)
+                self.rtp_dict.insert(iteration+1, (self.total_won / self.total_bet))
                 self.df_dict.insert(iteration+1, self.sm.this_win)
+
                 if(self.debug_level >= 3):
                     print(f"    spin {str(iteration)} and credits ${str(self.sm.return_credits())} and added to the dictionary: {self.df_dict[iteration]}")
 
-    def plot_result(self):
+    def plot_credits_result(self):
         #plt.style.use('_mpl-gallery')
+        plt.clf()
         plt.ylabel('Credits')
         plt.xlabel('Spins')
         plt.xlim(-1,self.simnum) # show total expected spins. 
         plt.plot(self.spins, self.incremental_credits)
         plt.show()
+
+    def plot_rtp_result(self):
+        plt.clf()
+        plt.ylabel('Return To Player %')
+        plt.xlabel('Spins')
+        plt.xlim(-1,self.simnum) # show total expected spins. 
+        plt.plot(self.spins, self.incremental_rtp)
+        plt.show()       
 
     # this should be used, in some form.. I don't like addressing this directly. However 
     #def return_dataframe(self):
@@ -582,22 +726,24 @@ class tkGui(tk.Tk):
         super().__init__()  #the super is a bit unnecessary, as there is nothing to inherit... but leaving it here for reference. 
         self.debug_level_default = 1
         #initial gui settings and layout
-        self.geometry("500x670")
+        self.geometry("500x700")
         self.title("Slot Simulator")
         self.columnconfigure(0, weight = 1)
         self.columnconfigure(1, weight = 1)
         self.columnconfigure(2, weight = 1)
 
         # default text/value entries
-        self.bet = StringVar(self, value = "0.25")  ## so I need to set this as a string in order to get a decimal.
+        #self.bet = StringVar(self, value = "0.25")  ## so I need to set this as a string in order to get a decimal.
+        self.bet = StringVar(self, value = "0.02")  ## so I need to set this as a string in order to get a decimal.
         self.slot_ready = False
         self.infinite_checked = BooleanVar(self, value=False)
+        self.mechreel_checked = BooleanVar(self, value=True)
         # .. simulator settings: 
         self.initial_credits = IntVar(self, value = 100)
         self.simruns = IntVar(self, value = 500)
-        self.input_filepath = StringVar(self, value = "./PARishSheets.xlsx") 
-        self.sim_output_filepath = StringVar(self, value = "./simdata.csv")
-        self.math_output_filepath = StringVar(self, value = "./mathdata.csv")
+        self.input_filepath = StringVar(self, value = "./assets/PARishSheets.xlsx") 
+        self.sim_output_filepath = StringVar(self, value = "./assets/simdata.csv")
+        self.math_output_filepath = StringVar(self, value = "./assets/mathdata.csv")
         self.payline_number = IntVar(self, value = 0)
         self.payline_totalbet = DoubleVar(self, value = 0 )
         self.status_box = StringVar(self, value = "[Select Input File at 1., or/then Click 2.]")
@@ -617,17 +763,17 @@ class tkGui(tk.Tk):
     ##### currently broken.. when using .get() .. meaning it's breaking out of the text box string format...
     def input_filepath_dialog_button(self): 
         #clear out the old entries, then reset. 
-        if(self.debug_level >= 1):
+        if(self.debug_level.get() >= 1):
             print(f"    input was {self.input_filepath.get()}")  
         self.input_filepath.set("")
         self.input_file_entry.select_clear()     
         # clearing out the variables, don't work 
         the_input = fd.askopenfilename(initialdir=os.curdir, title="Select A File", filetypes=(("excel files","*.xlsx"), ("all files","*.*")) )
         self.input_filepath.set(the_input)
-        if(self.debug_level >= 2):
+        if(self.debug_level.get() >= 2):
             print(f"        input is {self.input_filepath.get()}")
         self.input_file_entry.textvariable=self.input_filepath.get()
-        if(self.debug_level >= 3):
+        if(self.debug_level.get() >= 3):
             print(f"            and the entry is {self.input_file_entry.get()}")
 
     def sim_output_filepath_dialog_button(self): 
@@ -655,6 +801,7 @@ class tkGui(tk.Tk):
         if(self.debug_level.get() >= 1):
             print(f"    Sim Output Saving... {str(self.sim_output_filepath.get())}")
 
+    #currently unused
     def math_output_save_file(self):
         data = self.df #### this will be a different data set.....
         #print(data)
@@ -720,15 +867,18 @@ class tkGui(tk.Tk):
             self.status_box.set("[->2. Click 2 to Build or reload]")
             #print("->1. Slot needs to be loaded first.")
 
-    def plot_button_clicked(self):
-        self.sim.plot_result()
+    def plot_cred_button_clicked(self):
+        self.sim.plot_credits_result()
+
+    def plot_rtp_button_clicked(self):
+        self.sim.plot_rtp_result()
 
     def create_gui(self):
         # UI element values
         gui_row_iteration = 0
         #self.input_filepath = StringVar(self, value = '/Users/jdyer/Documents/GitHub/JD-Programming-examples/Python/math_slot_simulator/PARishSheets.xlsx')
         self.label_plot = tk.Label(self, text="1. Select Input File")
-        self.label_plot.grid(row = gui_row_iteration, column = 0, columnspan = 3)
+        self.label_plot.grid(row = gui_row_iteration, column = 0, columnspan = 3, sticky=W, padx=15)
         gui_row_iteration += 1
         self.input_label_filepath = tk.Label(self, text="Input Filepath ")
         self.input_label_filepath.grid(row = gui_row_iteration, column = 0)
@@ -757,10 +907,15 @@ class tkGui(tk.Tk):
         self.credit_entry = ttk.Entry(self, width = 8, textvariable = self.initial_credits)
         self.credit_entry.grid(row = gui_row_iteration, column = 2)
         gui_row_iteration += 1
+        #self.label_mechreel = tk.Label(self, text="Mechanical Style Slots: ")
+        #self.label_mechreel.grid(row = gui_row_iteration, column = 0, columnspan=2, sticky=E)
+        #self.mechreel_checkbox = ttk.Checkbutton(self, variable = self.mechreel_checked, onvalue = True, offvalue = False)
+        #self.mechreel_checkbox.grid(row = gui_row_iteration, column = 2)        
+        #gui_row_iteration += 1
         self.label_infinite = tk.Label(self, text="Infinite Credits: ")
         self.label_infinite.grid(row = gui_row_iteration, column = 0, columnspan=2, sticky=E)
-        self.infinite_check = ttk.Checkbutton(self, variable = self.infinite_checked, onvalue = True, offvalue = False)
-        self.infinite_check.grid(row = gui_row_iteration, column = 2)        
+        self.infinite_checkbox = ttk.Checkbutton(self, variable = self.infinite_checked, onvalue = True, offvalue = False)
+        self.infinite_checkbox.grid(row = gui_row_iteration, column = 2)        
         gui_row_iteration += 1
 
         # build slot button
@@ -833,12 +988,19 @@ class tkGui(tk.Tk):
         #self.math_do_output_button.grid(row = gui_row_iteration, column = 2)
         #gui_row_iteration += 1
 
-        # Plot Button to show math
-        self.label_plot = tk.Label(self, text="4b. Plot Spins to Credits")
-        self.label_plot.grid(row = gui_row_iteration, column = 0, columnspan = 3, sticky=W, padx=15)
+        # Plot Credits Button to show math
+        self.label_cred_plot = tk.Label(self, text="4b. Plot Credits Over Time")
+        self.label_cred_plot.grid(row = gui_row_iteration, column = 0, columnspan = 3, sticky=W, padx=15)
         gui_row_iteration += 1
-        self.run_plot_button = tk.Button(self, text="4b. Plot Spins to Credits", command = self.plot_button_clicked)       
-        self.run_plot_button.grid(row = gui_row_iteration, column = 0, sticky=W, padx=15)
+        self.run_cred_plot_button = tk.Button(self, text="4b. Plot Credits", command = self.plot_cred_button_clicked)       
+        self.run_cred_plot_button.grid(row = gui_row_iteration, column = 0, sticky=W, padx=15)
+        gui_row_iteration += 1
+        # Plot RTP Button to show math
+        self.label_rtp_plot = tk.Label(self, text="4c. Plot Return To Player over spins")
+        self.label_rtp_plot.grid(row = gui_row_iteration, column = 0, columnspan = 3, sticky=W, padx=15)
+        gui_row_iteration += 1
+        self.run_rtp_plot_button = tk.Button(self, text="4c. Plot RTP", command = self.plot_rtp_button_clicked)       
+        self.run_rtp_plot_button.grid(row = gui_row_iteration, column = 0, sticky=W, padx=15)
         gui_row_iteration += 1
 
         ### reset credits button (separate from the 'build virtual slot'?)
