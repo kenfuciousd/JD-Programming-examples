@@ -663,6 +663,7 @@ class Simulator():
         self.debug_level = debug_level
         self.total_bet = 0
         self.total_won = 0
+        self.plot_toggle = 0 
         self.run_sim()
         #self.plot_result()   # the automatic plotting was causing issues with things hanging until it closed. 
 
@@ -700,7 +701,11 @@ class Simulator():
 
     def plot_credits_result(self):
         #plt.style.use('_mpl-gallery')
-        plt.clf()
+        if(self.plot_toggle == 0):
+            self.plot_toggle = 2
+        if(self.plot_toggle == 1):
+            plt.clf()
+            self.plot_toggle = 2
         plt.ylabel('Credits')
         plt.xlabel('Spins')
         plt.xlim(-1,self.simnum) # show total expected spins. 
@@ -708,7 +713,11 @@ class Simulator():
         plt.show()
 
     def plot_rtp_result(self):
-        plt.clf()
+        if(self.plot_toggle == 0):
+            self.plot_toggle = 1
+        if(self.plot_toggle == 2):
+            plt.clf()
+            self.plot_toggle = 1
         plt.ylabel('Return To Player %')
         plt.xlabel('Spins')
         plt.xlim(-1,self.simnum) # show total expected spins. 
