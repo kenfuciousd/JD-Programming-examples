@@ -40,6 +40,7 @@ class SlotMachine:
         self.reels_sheetname = 'Reels'
         self.paytable_sheetname = 'Paytable'
         self.paylines_sheetname = 'Paylines'
+        self.rtp_sheetname = 'Ways_Pays'   # it doesn't like 'Ways/Pays' in excel
         ## examples, uncomment to override the original sheet values
         # 3 reel low volatility
         #self.reels_sheetname = 'Reels_lowvol'
@@ -50,9 +51,9 @@ class SlotMachine:
         #self.paytable_sheetname = 'Paytable_highvol'
         #self.paylines_sheetname = 'Paylines'      
         # 5 reels, Marissa's original setup 
-        self.reels_sheetname = 'Reels5'
-        self.paytable_sheetname = 'Paytable5'
-        self.paylines_sheetname = 'Paylines25'        
+        #self.reels_sheetname = 'Reels5'
+        #self.paytable_sheetname = 'Paytable5'
+        #self.paylines_sheetname = 'Paylines25'        
         # ad hoc, a 5 reel with *M and *F 3/4/5x paytable lines added;
         #self.reels_sheetname = 'Reels5'
         #self.paytable_sheetname = 'Paytable5_withwilds'
@@ -74,25 +75,26 @@ class SlotMachine:
         self.this_win = 0    # value to be returned for tracking
         self.total_won = 0
         self.total_bet = 0
+        self.rtp = 0
         # debug announcement; the place for initial conditions to get checked or set.
         if(self.debug_level >= 1):
             print(f"DEBUG LEVEL 1 - basic math and reel matching info")
         if(self.debug_level >= 2):
             print(f"DEBUG LEVEL 2 - most debugging information, descriptive")
-            print(f"{self.input_filepath} .. was saved from {filepath}")
+            print(f"the local variable {self.input_filepath} .. was saved from input {filepath}")
         if(self.debug_level >= 3):
             print(f"DEBUG LEVEL 3 - every other status message used for debugging - verbose")
 
         ### the reels, here, are the reel strips. 
         self.build_reels()
         # chooses the random positions for each of the reels, eventually add the total reel number to pass
-        self.randomize_mech_reels()
+        self.randomize_reels()
         #build paylines: read in file, store a paylines list to reference elsewhere - this is the map of how it checks for wins against the game window
         self.build_paylines()
         # paytable next, the reel lenghts are needed for math, along with the paylines  
         self.build_pay_table()
         #finally, build the 'game window'.. a 2 tier array/list where the symbols get set from the reels each spin, and what is checked against by the paylines
-        self.build_mechanical_game_window()
+        self.build_game_window()
         #end initialization
 
     def build_paylines(self):
@@ -179,7 +181,7 @@ class SlotMachine:
 
         # if there is a file at the spot, read it. ... this logic should probably be changed/added to the payline/paytable pieces..
 
-    def randomize_mech_reels(self):
+    def randomize_reels(self):
         #if(self.debug_level >= 2):
         #    print(f"        before randomize: {str(self.reel1pos)} {str(self.reel2pos)} {str(self.reel3pos)} " )
         self.reel1pos=random.randint(0,len(self.reel1)-1)
@@ -205,7 +207,7 @@ class SlotMachine:
         elif(value < 0):
             # negative to offset the negative value of the bet itself. 
             self.total_bet -= value
-        if(self.debug_level >= 2):
+        if(self.debug_level >= 3):
             print("Adjusting credits at " + str(value))
         self.game_credits = np.round(float(self.game_credits) + value, 2)
         if(self.debug_level >= 1):
@@ -220,71 +222,8 @@ class SlotMachine:
         #if(self.debug_level >= 3):
             #print("resetting wildsymbols: " + str(self.wildsymbols))
 
-    def build_random_video_game_window(self):
-        if("Reel 5" in self.reel_data):  
-            # initializing the generic window
-            self.game_window = [['gh1', 'gh6', 'gh11', 'gh16', 'gh21'], ['gh2', 'gh7', 'gh12', 'gh17', 'gh22'], ['gh3', 'gh8', 'gh13', 'gh18', 'gh23'], ['gh4', 'gh9', 'gh14', 'gh19', 'gh24'], ['gh5', 'gh10', 'gh15', 'gh20', 'gh25']]
-            if(self.debug_level >= 2):
-                print(f"    five reel video: all random " )
-            #top line
-            self.game_window[0][0]=self.reel1[random.randint(0,len(self.reel1)-1)]
-            self.game_window[1][0]=self.reel2[random.randint(0,len(self.reel2)-1)]
-            self.game_window[2][0]=self.reel3[random.randint(0,len(self.reel3)-1)]
-            self.game_window[3][0]=self.reel4[random.randint(0,len(self.reel4)-1)]
-            self.game_window[4][0]=self.reel4[random.randint(0,len(self.reel5)-1)]
-            # second line  
-            self.game_window[0][1]=self.reel1[random.randint(0,len(self.reel1)-1)]
-            self.game_window[1][1]=self.reel2[random.randint(0,len(self.reel2)-1)]
-            self.game_window[2][1]=self.reel3[random.randint(0,len(self.reel3)-1)]
-            self.game_window[3][1]=self.reel4[random.randint(0,len(self.reel4)-1)]
-            self.game_window[4][1]=self.reel4[random.randint(0,len(self.reel5)-1)]  
-            # third line
-            self.game_window[0][2]=self.reel1[random.randint(0,len(self.reel1)-1)]
-            self.game_window[1][2]=self.reel2[random.randint(0,len(self.reel2)-1)]
-            self.game_window[2][2]=self.reel3[random.randint(0,len(self.reel3)-1)]
-            self.game_window[3][2]=self.reel4[random.randint(0,len(self.reel4)-1)]
-            self.game_window[4][2]=self.reel4[random.randint(0,len(self.reel5)-1)]  
-            # if the game window is supposed to be 5x5, those would go here... 
-
-        elif("Reel 4" in self.reel_data):
-            self.game_window = [['gh1', 'gh5', 'gh9', 'gh13'], ['gh2', 'gh6', 'gh10', 'gh14'], ['gh3', 'gh8', 'gh11', 'gh15'], ['gh4', 'gh8', 'gh12', 'gh16']]
-            if(self.debug_level >= 2):
-                print(f"    four reel video: all random")
-            #top line
-            self.game_window[0][0]=self.reel1[random.randint(0,len(self.reel1)-1)]
-            self.game_window[1][0]=self.reel2[random.randint(0,len(self.reel2)-1)]
-            self.game_window[2][0]=self.reel3[random.randint(0,len(self.reel3)-1)]
-            self.game_window[3][0]=self.reel4[random.randint(0,len(self.reel4)-1)]
-            # second line  
-            self.game_window[0][1]=self.reel1[random.randint(0,len(self.reel1)-1)]
-            self.game_window[1][1]=self.reel2[random.randint(0,len(self.reel2)-1)]
-            self.game_window[2][1]=self.reel3[random.randint(0,len(self.reel3)-1)]
-            self.game_window[3][1]=self.reel4[random.randint(0,len(self.reel4)-1)]
-            # third line
-            self.game_window[0][2]=self.reel1[random.randint(0,len(self.reel1)-1)]
-            self.game_window[1][2]=self.reel2[random.randint(0,len(self.reel2)-1)]
-            self.game_window[2][2]=self.reel3[random.randint(0,len(self.reel3)-1)]
-            self.game_window[3][2]=self.reel4[random.randint(0,len(self.reel4)-1)]
-
-        elif("Reel 3" in self.reel_data):
-            self.game_window = [['gh1', 'gh4', 'gh7'], ['gh2', 'gh5', 'gh8'], ['gh3', 'gh6', 'gh9']]
-            if(self.debug_level >= 1):
-                print(f"    three reel video: all random ")          
-            #top line
-            self.game_window[0][0]=self.reel1[random.randint(0,len(self.reel1)-1)]
-            self.game_window[1][0]=self.reel2[random.randint(0,len(self.reel2)-1)]
-            self.game_window[2][0]=self.reel3[random.randint(0,len(self.reel3)-1)]
-            # second line  
-            self.game_window[0][1]=self.reel1[random.randint(0,len(self.reel1)-1)]
-            self.game_window[1][1]=self.reel2[random.randint(0,len(self.reel2)-1)]
-            self.game_window[2][1]=self.reel3[random.randint(0,len(self.reel3)-1)]
-            # third line
-            self.game_window[0][2]=self.reel1[random.randint(0,len(self.reel1)-1)]
-            self.game_window[1][2]=self.reel2[random.randint(0,len(self.reel2)-1)]
-            self.game_window[2][2]=self.reel3[random.randint(0,len(self.reel3)-1)]
-
     # note will need to change these inputs, to allow for >3
-    def build_mechanical_game_window(self):
+    def build_game_window(self):
         """ this is where the game window logic is handled, using the SlotMachine's variables - mechanical version"""
         # if reel1 pos == 0 (or reel's 2 or three), then set (game_window[reel][0]) as reelN[len(reel1)-1)
         # else use reelN[reelposN-1]
@@ -343,7 +282,7 @@ class SlotMachine:
             else:
                 self.game_window[4][2]=self.reel5[self.reel5pos+1]
             ##handling for reels 4 and 5 could be here, when configured. If reels==5, do the same thing as above for all three positions, but for 5x5
-            if(self.debug_level >= 1):
+            if(self.debug_level >= 2):
                 print(f"    ****    Found 5 reels, only 5x3 available at this time")
         # 4x3 - white hot 7s, but per Scott going to not use at present. this wasn't fully working
         elif("Reel 4" in self.reel_data):
@@ -385,13 +324,13 @@ class SlotMachine:
                 self.game_window[2][2]=self.reel3[0]
             else:
                 self.game_window[2][2]=self.reel3[self.reel3pos+1]
-            print(f"    |||| reel 4 {self.reel4pos}, and {self.reel4[self.reel4pos+1]}")
+            #print(f"    |||| reel 4 {self.reel4pos}, and {self.reel4[self.reel4pos+1]}")
             if(self.reel4pos==len(self.reel4)-1):
                 self.game_window[3][3]=self.reel4[0]
             else:
                 self.game_window[3][3]=self.reel4[self.reel4pos+1]
             ##handling for reels 4 and 5 could be here, when configured. If reels==5, do the same thing as above for all three positions, but for 5x5
-            print(f"    ****    Found 4 reels, ")
+            #print(f"    ****    Found 4 reels, ")
 
         elif("Reel 3" in self.reel_data):
             self.game_window = [['gh1', 'gh4', 'gh7'], ['gh2', 'gh5', 'gh8'], ['gh3', 'gh6', 'gh9']]
@@ -454,6 +393,10 @@ class SlotMachine:
 
         if(self.debug_level >= 2):
             print(f"        Paytable: {self.paytable}")
+
+        # set the RTP
+        self.rtp_data = pd.read_excel(self.input_filepath, sheet_name=self.rtp_sheetname)
+        self.rtp = self.rtp_data['Game RTP'][0] * 100 ## times 100 so that we have the percentage that matches the data
 
         # Paytable Math begins here. 
         #total_combinations = 0
@@ -643,8 +586,8 @@ class SlotMachine:
         self.adjust_credits(total_bet * -1)
         #STUB: remove wallet value: bet x paylines; check to see if player has enough
         #randomly choose reel positions for each of the reels
-        self.randomize_mech_reels()
-        self.build_mechanical_game_window()
+        self.randomize_reels()
+        self.build_game_window()
         self.is_a_win()
 
 
@@ -702,6 +645,7 @@ class Simulator():
     def plot_credits_result(self):
         #plt.style.use('_mpl-gallery')
         if(self.plot_toggle == 0):
+            plt.clf()
             self.plot_toggle = 2
         if(self.plot_toggle == 1):
             plt.clf()
@@ -713,7 +657,9 @@ class Simulator():
         plt.show()
 
     def plot_rtp_result(self):
+        rtp = []
         if(self.plot_toggle == 0):
+            plt.clf()
             self.plot_toggle = 1
         if(self.plot_toggle == 2):
             plt.clf()
@@ -722,6 +668,10 @@ class Simulator():
         plt.xlabel('Spins')
         plt.xlim(-1,self.simnum) # show total expected spins. 
         plt.plot(self.spins, self.incremental_rtp)
+        #print(f'debug plot: rtp is {self.sm.rtp}')
+        for i in range(0, len(self.spins)):
+            rtp.append(self.sm.rtp)
+        plt.plot(self.spins, rtp, linestyle = 'dashed', color='magenta')
         plt.show()       
 
     # this should be used, in some form.. I don't like addressing this directly. However 
