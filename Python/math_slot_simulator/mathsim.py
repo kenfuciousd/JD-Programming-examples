@@ -645,7 +645,6 @@ class Simulator():
     def plot_credits_result(self):
         #plt.style.use('_mpl-gallery')
         if(self.plot_toggle == 0):
-            plt.clf()
             self.plot_toggle = 2
         if(self.plot_toggle == 1):
             plt.clf()
@@ -659,7 +658,6 @@ class Simulator():
     def plot_rtp_result(self):
         rtp = []
         if(self.plot_toggle == 0):
-            plt.clf()
             self.plot_toggle = 1
         if(self.plot_toggle == 2):
             plt.clf()
