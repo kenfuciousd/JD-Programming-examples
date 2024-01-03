@@ -30,22 +30,23 @@ def findLast(inString):
 def convertAlphaToNum(inString):
 	#noting --- so, the input has overlapping numbers to catch this kind of replace all method. 
 	# the solution is to implement it "lookahead" style (?)
-	digitMap = {
-		'one': '1',
-		'two': '2',
-		'three': '3',
-		'four': '4',
-		'five': '5',
-		'six': '6',
-		'seven': '7',
-		'eight': '8',
-		'nine': '9',		
-	}
+	#digitMap = {
+	#	'one': '1',
+	#	'two': '2',
+	#	'three': '3',
+	#	'four': '4',
+	#	'five': '5',
+	#	'six': '6',
+	#	'seven': '7',
+	#	'eight': '8',
+	#	'nine': '9',		
+	#}
 
 	#pattern = re.compile(r"[0-9]|one|two|three|four|five|six|seven|eight|nine")
-	pattern = re.compile(r"\b(?:' + '|'.join(digitMap.keys()) + r')(?:(?=\s*\w)|(?=$))", re.IGNORECASE)
-	result = pattern.sub(lambda match: digitMap[match.group(0).lower()], inString)
-	return result
+	#pattern = re.compile(r"\b(?:' + '|'.join(digitMap.keys()) + r')(?:(?=\s*\w)|(?=$))", re.IGNORECASE)
+	#result = pattern.sub(lambda match: digitMap[match.group(0).lower()], inString)
+	#return result
+
 #	print(matches.group())
 #	for match in matches:
 		#s = match.start()
@@ -53,15 +54,26 @@ def convertAlphaToNum(inString):
 #		word = str(match.group(1))
 #		print("from Numberfier, found " + word)
 
-	#inString = inString.replace("one", "1")
-	#inString = inString.replace("two", "2")		
-	#inString = inString.replace("three", "3")
-	#inString = inString.replace("four", "4")
-	#inString = inString.replace("five", "5")
-	#inString = inString.replace("six", "6")
-	#inString = inString.replace("seven", "7")
-	#inString = inString.replace("eight", "8")
-	#inString = inString.replace("nine", "9")		
+	# this is the sanitization version - it's not as good as using a solid regex, but the above piece didn't work
+	inString = inString.replace("one", "onee")
+	inString = inString.replace("two", "twoo")		
+	inString = inString.replace("three", "threee")
+	inString = inString.replace("four", "fourr")
+	inString = inString.replace("five", "fivee")
+	inString = inString.replace("six", "sixx")
+	inString = inString.replace("seven", "sevenn")
+	inString = inString.replace("eight", "eightt")
+	inString = inString.replace("nine", "ninee")		
+
+	inString = inString.replace("one", "1")
+	inString = inString.replace("two", "2")		
+	inString = inString.replace("three", "3")
+	inString = inString.replace("four", "4")
+	inString = inString.replace("five", "5")
+	inString = inString.replace("six", "6")
+	inString = inString.replace("seven", "7")
+	inString = inString.replace("eight", "8")
+	inString = inString.replace("nine", "9")		
 
 	#inString = inString.lower()
 	#inString = inString.replace("eleven", "11")
@@ -86,7 +98,7 @@ def convertAlphaToNum(inString):
 	## does not work - misses a couple of them like "twone" = 21
 
 	#print("!== returning numerified: " + inString)
-	#return inString
+	return inString
 
 def main():
 	print("STARTING ANALYSIS")
